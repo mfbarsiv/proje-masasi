@@ -1,0 +1,1480 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Proje Masası</title>
+<meta name="theme-color" content="#0e6964">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Proje Masası">
+<meta name="description" content="Arazi, imar ve ihtiyaç programından kütle yerleşimi: 2D, 3D ve kesit birlikte.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Barlow+Semi+Condensed:wght@400;500;600&display=swap">
+<style>
+/* Layout: üst şerit; altında iki pafta yan yana — solda 2D eskiz kâğıdı (araç şeridi + sayaçlar), sağda 3D maket; kesit en altta açılır; panel sağdan kayar. Aydınger'in renk ve yazı dili. Kâğıt iki temada da açık kalır. */
+:root{
+  --desk:#dde3e0; --paper:#f6f8f6; --chrome:rgba(250,252,251,.94); --chrome-solid:#fbfcfb;
+  --line:#cfd8d4; --fg:#1c2421; --muted:#5d6b66; --accent:#0e6964; --accent-fg:#ffffff;
+  --accent-soft:rgba(14,105,100,.12); --danger:#b0372c; --compare:#e0603c; --ok:#2b7a46; --warn:#b4621a;
+  --cut:#8f5a36; --fill:#d4a72c;
+  --shadow:0 8px 28px rgba(18,36,31,.14);
+  --f-ui:"Barlow Semi Condensed","Roboto Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-hand:"Architects Daughter","Segoe Print","Comic Sans MS",cursive;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --desk:#141917; --paper:#e6eae6; --chrome:rgba(24,30,28,.95); --chrome-solid:#1a201e;
+  --line:#33403b; --fg:#e5ebe8; --muted:#97a6a0; --accent:#53b5ab; --accent-fg:#0b1513;
+  --accent-soft:rgba(83,181,171,.16); --danger:#e2766b; --compare:#e0603c; --ok:#6cc08a; --warn:#e8a25a;
+  --cut:#c08a62; --fill:#e6c25a;
+  --shadow:0 8px 28px rgba(0,0,0,.45); color-scheme:dark }}
+:root[data-theme="dark"]{
+  --desk:#141917; --paper:#e6eae6; --chrome:rgba(24,30,28,.95); --chrome-solid:#1a201e;
+  --line:#33403b; --fg:#e5ebe8; --muted:#97a6a0; --accent:#53b5ab; --accent-fg:#0b1513;
+  --accent-soft:rgba(83,181,171,.16); --danger:#e2766b; --compare:#e0603c; --ok:#6cc08a; --warn:#e8a25a;
+  --cut:#c08a62; --fill:#e6c25a;
+  --shadow:0 8px 28px rgba(0,0,0,.45); color-scheme:dark }
+[hidden]{display:none!important}
+.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);pointer-events:none}
+label.ab{cursor:pointer}
+html,body{height:100%;overscroll-behavior:none}
+body{background:var(--desk);color:var(--fg);font-family:var(--f-ui);font-size:15px;overflow:hidden;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input{-webkit-user-select:text;user-select:text}
+svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.bar{background:var(--chrome);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:12px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+
+#app{position:fixed;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px;
+  padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* üst şerit */
+.top{display:flex;align-items:center;gap:10px;min-width:0}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 12px 6px 10px;min-width:0;flex:none}
+.brand b{font-family:var(--f-hand);font-weight:400;font-size:20px;line-height:1;white-space:nowrap}
+.brand .chip{font-size:13px;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.steps{display:flex;gap:2px;padding:4px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.steps::-webkit-scrollbar{display:none}
+.steps span{padding:6px 10px;border-radius:8px;font-size:14px;color:var(--muted);white-space:nowrap}
+.steps span.on{background:var(--accent);color:var(--accent-fg)}
+.steps span.soon{opacity:.5}
+.actions{display:flex;gap:2px;padding:4px;margin-left:auto;min-width:0;flex:none}
+.actions::-webkit-scrollbar{display:none}
+.ab{display:flex;align-items:center;gap:6px;border:0;background:transparent;padding:7px 10px;border-radius:8px;white-space:nowrap}
+.ab:hover{background:var(--accent-soft)}
+.ab:disabled{opacity:.35;cursor:default;background:transparent}
+.ab.on{background:var(--accent);color:var(--accent-fg)}
+.ab.primary{background:var(--accent);color:var(--accent-fg)}
+.sep{width:1px;background:var(--line);margin:6px 4px;flex:none}
+@media (max-width:1240px){.brand .chip{display:none}}
+@media (max-width:1180px){.ab .lb{display:none}.actions .ab{padding:7px 11px}}
+@media (max-width:680px){.brand{display:none}}
+@media (pointer:coarse){.ab{min-height:42px}.chips button{min-height:36px}.btn{min-height:38px}}
+.fgrp{display:flex;flex-direction:column;gap:6px}
+.fgrp>b{font-size:12.5px;font-weight:600;color:var(--muted);letter-spacing:.03em;text-transform:uppercase}
+.fgrp .btn{text-align:left}
+
+/* paftalar */
+.panes{position:relative;min-height:0;min-width:0}
+.pane{position:absolute;border-radius:12px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow)}
+.pane.mini{z-index:5;border:2px solid var(--accent);box-shadow:0 10px 32px rgba(18,36,31,.28)}
+.pane.mini .rail,#pk.mini .khead,.pane.mini .hud,.pane.mini .vctl,.pane.mini .pctl,.pane.mini .khead,.pane.mini .hint3,.pane.mini .empty{display:none}
+.minicover{position:absolute;z-index:6;cursor:pointer;touch-action:none;border-radius:12px}
+.minicover span{position:absolute;left:8px;top:8px;font-size:12.5px;padding:3px 8px;border-radius:7px;background:var(--accent);color:var(--accent-fg);letter-spacing:.04em}
+#divider{position:absolute;z-index:4;touch-action:none;display:flex;align-items:center;justify-content:center}
+#divider.v{cursor:col-resize}#divider.h{cursor:row-resize}
+#divider i{display:block;border-radius:3px;background:var(--muted);opacity:.55}
+#divider.v i{width:4px;height:44px}#divider.h i{height:4px;width:44px}
+#divider:hover i,#divider.drag i{background:var(--accent);opacity:1}
+.pctl{position:absolute;right:8px;top:8px;display:flex;gap:2px;padding:4px;z-index:3}
+.pctl .ab,.vctl .ab.ic,.kbtns .ab.ic{padding:6px 7px}
+.views{display:flex;gap:2px;padding:4px;flex:none}
+.views .ab{min-width:52px;justify-content:center}
+.views .ab.mini{box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent)}
+.dotw{width:8px;height:8px;border-radius:50%;background:var(--warn);display:inline-block}
+.rail .rt{display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:var(--muted);border-radius:8px;padding:4px 0;width:58px;flex:none}
+.rail .rt:hover{background:var(--accent-soft)}
+.rail.col .tb:not(.on),.rail.col .rsep,.rail.col #bFit2{display:none}
+.rail.col .rt svg{transform:rotate(180deg)}
+.empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 24px;color:#5d6b66;font-size:15px;pointer-events:none}
+#p2{background:var(--paper)}
+#p3{background:var(--desk)}
+canvas.view{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#cv2{cursor:crosshair}
+.ptag{position:absolute;right:10px;bottom:8px;display:none;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#6b7873;pointer-events:none}
+#p3 .ptag{color:var(--muted)}
+
+/* araç şeridi */
+.rail{position:absolute;left:8px;top:8px;bottom:8px;display:flex;flex-direction:column;gap:2px;padding:5px;overflow-y:auto;scrollbar-width:none;width:max-content;max-height:calc(100% - 16px);height:max-content;z-index:3}
+.rail::-webkit-scrollbar{display:none}
+.tb{display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:transparent;border-radius:9px;padding:7px 5px;width:58px;font-size:12.5px;color:var(--muted);flex:none}
+.tb:hover{background:var(--accent-soft);color:var(--fg)}
+.tb.on{background:var(--accent);color:var(--accent-fg)}
+.rsep{height:1px;background:var(--line);margin:4px 6px;flex:none}
+
+/* sayaçlar */
+.hud{position:absolute;left:12px;right:12px;bottom:12px;display:flex;flex-wrap:wrap;gap:6px;pointer-events:none;z-index:4;justify-content:center}
+.cnt{pointer-events:auto;display:flex;align-items:baseline;gap:6px;padding:5px 10px;border-radius:9px;background:var(--chrome);border:1px solid var(--line);font-variant-numeric:tabular-nums;font-size:14px;white-space:nowrap}
+.cnt small{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.cnt b{font-weight:600}
+.cnt i{font-style:normal;color:var(--muted);font-size:13px}
+.cnt.over{border-color:var(--danger)}
+.cnt.over b{color:var(--danger)}
+.cnt .sw{width:10px;height:10px;border-radius:3px;align-self:center}
+.cnt.wbtn{border:1px solid var(--warn);color:var(--warn);cursor:pointer;font:inherit;font-size:14px}
+.cnt.wbtn.zero{border-color:var(--line);color:var(--muted)}
+
+/* 3D kontrolleri */
+.vctl{position:absolute;right:8px;top:8px;align-items:center;display:flex;gap:2px;padding:4px;z-index:2;flex-wrap:wrap;justify-content:flex-end;max-width:calc(100% - 16px)}
+.hint3{position:absolute;left:10px;bottom:8px;font-size:12.5px;color:var(--muted);pointer-events:none;max-width:60%}
+
+/* kesit */
+#pk{background:var(--paper)}
+#pk .khead{position:absolute;left:8px;top:8px;right:8px;display:flex;gap:8px;align-items:center;pointer-events:none;z-index:2}
+#pk .khead>*{pointer-events:auto}
+#pk .ktitle{font-family:var(--f-hand);font-size:17px;color:#1c2421;padding:2px 8px;background:rgba(246,248,246,.85);border-radius:6px}
+#pk .klegend{display:flex;gap:10px;font-size:13px;color:#4b5853;background:rgba(246,248,246,.85);border-radius:6px;padding:3px 8px;flex-wrap:wrap}
+#pk .klegend span{display:flex;align-items:center;gap:5px}
+#pk .klegend i{width:12px;height:10px;border-radius:2px;display:inline-block}
+#pk .kbtns{margin-left:auto;display:flex;gap:2px;padding:3px}
+#cvK{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+/* panel */
+.panel{position:absolute;right:0;top:0;bottom:0;width:min(330px,100%);min-height:0;z-index:8;display:flex;flex-direction:column;overflow:auto;padding:14px 14px 12px;gap:18px;z-index:6}
+.psec{display:flex;flex-direction:column;gap:10px}
+.phead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-width:0}
+.phead h2{margin:0;font-size:12.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.phead span{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.fold{gap:0}
+.fold summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;border-radius:6px}
+.fold summary::-webkit-details-marker{display:none}
+.fold summary .phead{flex:1}
+.fold summary::after{content:"";width:7px;height:7px;border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);transform:rotate(45deg);margin:-4px 4px 0 0;flex:none}
+.fold[open] summary::after{transform:rotate(-135deg);margin-top:4px}
+.fold-in{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.btn{border:1px solid var(--line);background:transparent;border-radius:9px;padding:8px 12px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:500}
+.btn.small{padding:5px 10px;font-size:13.5px}
+.btn.danger{color:var(--danger);border-color:transparent}
+.brow{display:flex;gap:8px;flex-wrap:wrap}
+.brow .btn{flex:1}
+.hint{font-size:13px;color:var(--muted);margin:0;line-height:1.4}
+.field{display:grid;grid-template-columns:minmax(0,1fr) 104px;gap:8px;align-items:center;font-size:14px;color:var(--muted)}
+.inunit{display:flex;align-items:center;gap:5px}
+.inunit em{font-style:normal;color:var(--muted);font-size:13px;min-width:14px}
+.tin{font-size:15px;color:var(--fg);background:var(--chrome-solid);border:1px solid var(--line);border-radius:7px;padding:5px 7px;width:100%;min-width:0;text-align:right;font-variant-numeric:tabular-nums}
+.tin.l{text-align:left}
+select.tin{text-align:left;padding:5px 4px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 10px}
+.grid2>*{min-width:0}
+.grid2 label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--muted)}
+.lyr{display:grid;grid-template-columns:10px minmax(0,1fr) auto 112px;gap:8px;align-items:center;font-size:14px}
+.lyr .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lyr small{color:var(--muted);font-variant-numeric:tabular-nums}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+.kv{display:flex;flex-direction:column;gap:3px;font-size:14px;font-variant-numeric:tabular-nums}
+.kv div{display:flex;justify-content:space-between;gap:8px}
+.kv .lab{color:var(--muted)}
+.kv .neg{color:var(--danger);font-weight:600}
+.edges{display:flex;flex-direction:column;gap:5px}
+.erow{display:grid;grid-template-columns:28px 1fr 92px;gap:6px;align-items:center;font-size:14px}
+.erow b{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:500}
+.erow.hl{background:var(--accent-soft);border-radius:7px}
+.warns{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.warns li{font-size:14px;line-height:1.35;padding:6px 8px 6px 10px;border-left:3px solid var(--warn);background:var(--accent-soft);border-radius:0 7px 7px 0}
+.warns li.info{border-left-color:var(--muted)}
+.warns li.ok{border-left-color:var(--ok)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chips button{border:1px solid var(--line);background:transparent;border-radius:999px;padding:4px 11px;font-size:14px}
+.chips button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.mhead{display:flex;align-items:center;gap:8px}
+.mhead input{font-family:var(--f-hand);font-size:17px;text-align:left}
+.step{display:flex;align-items:center;gap:4px}
+.step button{border:1px solid var(--line);background:transparent;border-radius:7px;width:32px;height:32px;font-size:18px;line-height:1;flex:none}
+.step .tin{text-align:center}
+
+/* program */
+#pp{background:var(--chrome-solid);container-type:inline-size}
+.pgwrap{position:absolute;inset:0;display:grid;grid-template-columns:minmax(280px,360px) minmax(0,1fr)}
+@container (max-width:860px){.pgwrap{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1.15fr) minmax(0,1fr)}.plist{border-right:0;border-bottom:1px solid var(--line)}.pltop{padding-right:96px}}
+.btools{position:absolute;left:10px;top:10px;display:flex;gap:2px;padding:4px;z-index:2;flex-wrap:wrap;max-width:calc(100% - 120px)}
+.pgwrap.nobub{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)!important}.pgwrap.nobub .pbub{display:none}.pgwrap.nobub .plist{border:0}
+.pane.mini .plist,.pane.mini #btools,.pane.mini #bubbar,.pane.mini #bEmpty{display:none}.pane.mini .pgwrap{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+.plist{display:flex;flex-direction:column;min-height:0;min-width:0;border-right:1px solid var(--line);padding:12px 10px 10px 12px;gap:10px}
+.pltop{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pltop h2{margin:0 auto 0 0;font-size:12.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.capline{display:flex;justify-content:space-between;gap:8px;font-size:14px;font-variant-numeric:tabular-nums}
+.capline.sm{font-size:12.5px;color:var(--muted)}
+.capbar{height:8px;border-radius:4px;background:var(--accent-soft);overflow:hidden;margin:4px 0 2px}
+.capbar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.capbar.over i{background:var(--danger)}
+#pcap{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--line);border-radius:9px}
+.phd{display:grid;grid-template-columns:18px 10px minmax(0,1fr) 58px 42px 28px;gap:4px;font-size:12px;color:var(--muted);padding:0 2px}
+.tree{overflow:auto;min-height:0;flex:1;display:flex;flex-direction:column;gap:1px;margin:0 -4px;padding:0 4px}
+.prow{display:grid;grid-template-columns:18px 10px minmax(0,1fr) 58px 42px 28px;gap:4px;align-items:center;border-radius:7px;padding-top:1px;padding-bottom:1px}
+.prow.on{background:var(--accent-soft)}
+.prow.grp .nm{font-weight:600}
+.prow .tot{grid-column:span 2;text-align:right;font-size:14px;font-variant-numeric:tabular-nums;color:var(--muted);padding-right:4px}
+.prow .tg{border:0;background:transparent;color:var(--muted);padding:0;font-size:14px;line-height:1}
+.pin{font-size:14.5px;color:var(--fg);background:transparent;border:1px solid transparent;border-radius:6px;padding:4px 5px;min-width:0;width:100%}
+.pin:hover{border-color:var(--line)}.pin:focus{background:var(--chrome-solid);border-color:var(--accent);outline:none}
+.pin.num{text-align:right;font-variant-numeric:tabular-nums}
+.mb{border:0;background:transparent;color:var(--muted);border-radius:6px;font-size:16px;padding:2px 0}
+.mb:hover{background:var(--accent-soft);color:var(--fg)}.mb.site{color:var(--accent);font-size:12px}
+.pkrow{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--muted)}
+.pkrow .tin{width:64px}
+.pbub{position:relative;min-height:0;min-width:0;background:var(--paper)}
+#cvB{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+#bubbar{position:absolute;left:10px;bottom:30px;display:flex;align-items:center;gap:8px;padding:6px 6px 6px 12px;z-index:2;max-width:calc(100% - 120px);flex-wrap:wrap}
+#bubbar span{color:var(--muted);font-variant-numeric:tabular-nums;font-size:14px}
+#pp .pctl{right:8px;top:8px}
+.pempty{color:var(--muted);font-size:14px;line-height:1.45;margin:6px 0}
+/* kart */
+.card{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);width:min(360px,calc(100% - 100px));padding:14px;display:flex;flex-direction:column;gap:10px;z-index:7}
+.card-h{display:flex;align-items:center;gap:8px}
+.card-h strong{font-weight:600}
+.card-h .x{margin-left:auto;border:0;background:transparent;font-size:22px;line-height:1;padding:2px 8px;border-radius:6px;color:var(--muted)}
+.card p{margin:0;line-height:1.4;font-size:14px;color:var(--muted)}
+.card .row{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.card .tin{font-size:17px;padding:8px 10px}
+@media (max-width:820px){.card{width:calc(100% - 24px)}}
+
+.toast{position:absolute;left:50%;top:calc(66px + env(safe-area-inset-top,0px));transform:translateX(-50%);padding:9px 14px;font-size:14.5px;z-index:20;max-width:calc(100% - 32px);line-height:1.35}
+.drop{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:rgba(14,105,100,.12);border:3px dashed var(--accent);border-radius:14px;font-size:20px;color:var(--accent);pointer-events:none}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+.massbar{position:absolute;left:50%;bottom:36px;transform:translateX(-50%);display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;padding:6px 10px;z-index:3;max-width:calc(100% - 130px)}
+.massbar .sep{align-self:stretch}
+.massbar .mblab{font-size:12.5px;color:var(--muted)}
+.massbar .mbinfo{font-size:13.5px;color:var(--muted)}
+.massbar .chips button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.prow.on{box-shadow:inset 0 0 0 1.5px var(--accent)}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header class="top">
+    <div class="brand bar"><b>Proje Masası</b><span class="chip">Test 1 · Yerleşim</span></div>
+    <nav class="views bar" aria-label="Görünümler"><button class="ab" data-v="pp" title="İhtiyaç programını aç/kapat">Program</button><button class="ab" data-v="p2" title="Üstten görünümü aç/kapat">2D</button><button class="ab" data-v="p3" title="3D görünümü aç/kapat">3D</button><button class="ab" data-v="pk" title="Kesiti aç/kapat">Kesit</button></nav>
+    <div class="actions bar">
+      <button class="ab" id="bUndo" title="Geri al"><svg class="i" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg><span class="lb">Geri</span></button>
+      <button class="ab" id="bRedo" title="Yinele"><svg class="i" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg><span class="lb">İleri</span></button>
+      <span class="sep"></span>
+      <button class="ab primary" id="bFile" title="Dosya: DXF aç, dışa aktar, projeyi kaydet"><svg class="i" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg><span class="lb">Dosya</span></button>
+      <button class="ab" id="bHud" title="Sayaçları aç/kapat"><svg class="i" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span class="lb">Sayaçlar</span><span class="dotw" id="hudDot" hidden></span></button>
+      <button class="ab" id="bPanel"><svg class="i" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M14 5v14"/></svg><span class="lb">Panel</span></button>
+    </div>
+    <input type="file" id="fileIn" class="vh" aria-label="DXF dosyası seç"><input type="file" id="projIn" class="vh" accept=".json,application/json" aria-label="Proje dosyası seç">
+  </header>
+
+  <main class="panes" id="panes">
+    <section class="pane" id="p2" aria-label="Üstten 2D görünüm">
+      <canvas class="view" id="cv2"></canvas>
+      <div class="rail bar" id="rail">
+        <button class="rt" id="bRail" title="Araçları gizle/göster"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button class="tb" data-t="sel" title="Seç, taşı, döndür"><svg class="i" viewBox="0 0 24 24"><path d="M5 3l13 8-5.5 1.5L10 18z"/></svg>Seç</button>
+        <button class="tb" data-t="mass" title="Kütle çiz: dikdörtgen, çokgen ya da hazır şekil"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>Kütle</button>
+        <button class="tb" data-t="sec" title="Kesit hattı çiz"><svg class="i" viewBox="0 0 24 24"><path d="M4 19L20 5" stroke-dasharray="4 2 1 2"/><path d="M4 19v-5M4 19h5M20 5v5M20 5h-5"/></svg>Kesit</button>
+        <span class="rsep"></span>
+        <button class="tb" data-t="seq" title="Eğrilerin üstünden çizgi çek, sırayla kotla"><svg class="i" viewBox="0 0 24 24"><path d="M3 7c5-3 13-3 18 0M3 13c5-3 13-3 18 0M3 19c5-3 13-3 18 0"/><path d="M7 3l10 19"/></svg>Sırayla</button>
+        <button class="tb" data-t="kot" title="Eğriye dokun, kot yaz"><svg class="i" viewBox="0 0 24 24"><path d="M3 18c5-5 13-5 18 0"/><path d="M12 3v9M9 9l3 3 3-3"/></svg>Kot</button>
+        <button class="tb" data-t="parsel" title="Parsel seç, kenara dokunup çekme mesafesi gir"><svg class="i" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 8h8v8H8z" stroke-dasharray="2 2"/></svg>Parsel</button>
+        <span class="rsep"></span>
+        <button class="tb" data-t="pan" title="Kaydır"><svg class="i" viewBox="0 0 24 24"><path d="M8 12V5.5a1.5 1.5 0 013 0V11M11 11V4a1.5 1.5 0 013 0v7M14 11V6a1.5 1.5 0 013 0v7c0 4-2.5 7-6 7-2.8 0-4.4-1.6-6-4.4l-1.4-2.4a1.4 1.4 0 012.3-1.5L8 13"/></svg>El</button>
+        <button class="tb" id="bFit2" title="Tümünü göster"><svg class="i" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Sığdır</button>
+      </div>
+      <div class="pctl bar"><button class="ab" data-min="p2" title="Küçük pencere yap"><svg class="i" viewBox="0 0 24 24"><path d="M4 14h6v6M20 10h-6V4M14 10l6-6M4 20l6-6"/></svg></button><button class="ab" data-close="p2" title="Kapat"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="massbar bar" id="massBar" hidden>
+        <div class="chips" id="mbMode"><button data-mm="rect" class="on">Dikdörtgen</button><button data-mm="poly">Çokgen</button></div>
+        <span class="sep"></span>
+        <div class="chips" id="mbShapes"><span class="mblab">Hazır şekil</span><button data-sh="L">L</button><button data-sh="U">U</button><button data-sh="T">T</button><button data-sh="X">Artı</button></div>
+        <div class="chips" id="mbDraw" hidden><span class="mbinfo" id="mbInfo"></span><button id="mbUndo">Son köşe</button><button id="mbDone" class="primary">Bitir</button><button id="mbCancel">Vazgeç</button></div>
+      </div>
+    </section>
+
+    <section class="pane" id="p3" aria-label="3D maket">
+      <div id="c3wrap" style="position:absolute;inset:0"><canvas class="view" id="cv3"></canvas></div>
+      <div class="vctl bar">
+        <button class="ab on" id="bAkso" title="Aksonometrik / perspektif">Akso</button>
+        <button class="ab" id="bGhost" title="İlk zemini saydam göster">İlk zemin</button>
+        <button class="ab on" id="bEnv" title="İmar zarfını göster/gizle">Zarf</button><button class="ab" id="bFit3" title="Görünümü sığdır">Sığdır</button>
+        <span class="sep"></span><button class="ab ic" data-min="p3" title="Küçük pencere yap"><svg class="i" viewBox="0 0 24 24"><path d="M4 14h6v6M20 10h-6V4M14 10l6-6M4 20l6-6"/></svg></button><button class="ab ic" data-close="p3" title="Kapat"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <span class="hint3" id="hint3">Döndür: tek parmak · Yakınlaş: iki parmak · Kütleyi kalemle sürükle</span>
+    </section>
+
+  <section class="pane" id="pk" aria-label="Kesit">
+    <canvas id="cvK"></canvas>
+    <div class="empty" id="kEmpty">Kesit aracıyla 2D görünümde bir hat çiz.</div>
+    <div class="khead">
+      <span class="ktitle">A–A kesiti</span>
+      <span class="klegend"><span><i style="background:#cdd3bf"></i>arazi</span><span><i style="background:var(--cut)"></i>kazı</span><span><i style="background:var(--fill)"></i>dolgu</span><span><i style="border:1.5px dashed #6b7873"></i>ilk zemin</span></span>
+      <div class="kbtns bar">
+        <button class="ab" id="bVE" title="Düşey abartma">Düşey 1×</button>
+        <button class="ab" id="bKclose" title="Kesit hattını sil">Hattı sil</button><span class="sep"></span><button class="ab ic" data-min="pk" title="Küçük pencere yap"><svg class="i" viewBox="0 0 24 24"><path d="M4 14h6v6M20 10h-6V4M14 10l6-6M4 20l6-6"/></svg></button><button class="ab ic" data-close="pk" title="Kapat"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+    </div>
+  </section>
+    <section class="pane" id="pp" aria-label="İhtiyaç programı" hidden>
+      <div class="pgwrap">
+        <div class="plist">
+          <div class="pltop"><h2>İhtiyaç programı</h2><button class="btn small" id="pgAdd">+ Grup</button><button class="btn small" id="pgTpl">Şablon</button><button class="btn small" id="pgPaste">Yapıştır</button><button class="btn small" id="pgBub" title="Balon diyagramını göster/gizle">Balonlar</button></div>
+          <div id="pcap"></div>
+          <div class="pkrow">Brüt katsayısı<input class="tin" id="pK" type="text" inputmode="decimal" value="1,20" aria-label="Brüt katsayısı"><span>net × katsayı = brüt</span></div>
+          <div class="phd"><span></span><span></span><span>Ad</span><span style="text-align:right">m²</span><span style="text-align:right">adet</span><span></span></div>
+          <div class="tree" id="ptree"></div>
+          <div class="pempty" id="pEmpty"><b>Ne tasarlıyorsun?</b> Bir tür seç, tipik bir program gelsin. Değerler ortalama başlangıçtır, hepsini değiştirebilirsin.<div class="chips tplc" style="margin-top:8px"></div><span style="display:block;margin-top:8px">Ya da "+ Grup" ile boş başla, ya da şartnameyi yapıştır.</span></div>
+        </div>
+        <div class="pbub"><canvas id="cvB"></canvas><div class="btools bar" id="btools"><button class="ab on" data-bt="move">Taşı</button><button class="ab" data-bt="lasso">Grupla</button><button class="ab" data-bt="bag">Bağ</button><span class="sep"></span><button class="ab" id="bubFitB">Sığdır</button></div><div class="bar" id="bubbar" hidden></div><div class="empty" id="bEmpty">Balonlar burada belirir. Her balonun alanı brüt m² ile orantılı.</div></div>
+      </div>
+      <div class="pctl bar"><button class="ab" data-min="pp" title="Küçük pencere yap"><svg class="i" viewBox="0 0 24 24"><path d="M4 14h6v6M20 10h-6V4M14 10l6-6M4 20l6-6"/></svg></button><button class="ab" data-close="pp" title="Kapat"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    </section>
+    <div id="divider" hidden><i></i></div>
+    <div class="minicover" id="minicover" hidden><span>Büyüt</span></div>
+    <div class="hud" id="hud" hidden></div>
+    <aside class="panel bar" id="panel" hidden aria-label="Panel"></aside>
+    <div class="card bar" id="card" hidden></div>
+  </main>
+
+  <div class="toast bar" id="toast" hidden></div>
+  <div class="drop" id="drop" hidden>DXF dosyasını bırak</div>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="vendor/OrbitControls.js"></script>
+<script>
+'use strict';
+/* ============ yardımcılar ============ */
+const $=s=>document.querySelector(s);
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const nf=(v,d=2)=>Number.isFinite(v)?v.toLocaleString('tr-TR',{minimumFractionDigits:d,maximumFractionDigits:d}):'–';
+const nk=v=>Number.isFinite(v)?v.toLocaleString('tr-TR',{maximumFractionDigits:2}):'–';
+const pnum=s=>{if(s==null)return NaN;const t=String(s).trim().replace(/\s/g,'').replace(',','.');return t===''?NaN:parseFloat(t)};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function segD(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy;let t=L?((px-ax)*dx+(py-ay)*dy)/L:0;t=t<0?0:t>1?1:t;return Math.hypot(px-ax-t*dx,py-ay-t*dy)}
+function polyDist(px,py,p,closed){let b=1e18;const n=p.length/2,m=closed?n:n-1;for(let i=0;i<m;i++){const j=(i+1)%n;const d=segD(px,py,p[2*i],p[2*i+1],p[2*j],p[2*j+1]);if(d<b)b=d}return b}
+function segInt(ax,ay,bx,by,cx,cy,dx,dy){const rx=bx-ax,ry=by-ay,sx=dx-cx,sy=dy-cy,den=rx*sy-ry*sx;if(Math.abs(den)<1e-12)return null;const t=((cx-ax)*sy-(cy-ay)*sx)/den,u=((cx-ax)*ry-(cy-ay)*rx)/den;return(t>=0&&t<=1&&u>=0&&u<=1)?t:null}
+function area(P){let a=0;for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length];a+=p[0]*q[1]-q[0]*p[1]}return a/2}
+function inPoly(x,y,P){let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if(((a[1]>y)!==(b[1]>y))&&(x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]))c=!c}return c}
+function clipHalf(P,ax,ay,nx,ny){/* nx,ny içe doğru normal; a çizgi üstünde */const out=[];const f=p=>(p[0]-ax)*nx+(p[1]-ay)*ny;for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length],fp=f(p),fq=f(q);if(fp>=0)out.push(p);if((fp>=0)!==(fq>=0)){const t=fp/(fp-fq);out.push([p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t])}}return out}
+function bboxPts(arrs){let a=[1e18,1e18,-1e18,-1e18];for(const p of arrs)for(let i=0;i<p.length;i+=2){const x=p[i],y=p[i+1];if(x<a[0])a[0]=x;if(y<a[1])a[1]=y;if(x>a[2])a[2]=x;if(y>a[3])a[3]=y}return a[0]>a[2]?null:a}
+function toast(msg,ms=4200){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,ms)}
+
+/* ============ proje durumu ============ */
+const ROLES=[['contour','Eş yükselti'],['kot','Kot noktası'],['text','Kot yazısı'],['parcel','Parsel'],['building','Bina'],['road','Yol'],['hide','Gizle']];
+const ROLE_COL={contour:'#3d4a44',kot:'#2f5f8a',text:'#7a6a3a',parcel:'#1c2421',building:'#6b5b4e',road:'#8a8f86',hide:'#b8bfbb'};
+let S=blank();
+function blank(){return{v:1,name:'',units:6,origin:[0,0],sample:false,layers:{},ents:[],pts:[],txs:[],over:{},parcel:null,edges:[],
+  imar:{nizam:'ayrik',taks:'',kaks:'',hmax:'',kat:''},masses:[],sec:null,seq:1,eid:1}}
+const roleOf=e=>S.over[e.id]||(S.layers[e.ly]&&S.layers[e.ly].role)||'hide';
+const contours=()=>S.ents.filter(e=>e.id!==S.parcel&&roleOf(e)==='contour');
+const hasZ=e=>e.z!=null||!!e.zz;
+function parcelPoly(){const e=S.ents.find(e=>e.id===S.parcel);if(!e)return null;const P=[];for(let i=0;i<e.p.length;i+=2)P.push([e.p[i],e.p[i+1]]);if(P.length>3){const a=P[0],b=P[P.length-1];if(Math.hypot(a[0]-b[0],a[1]-b[1])<1e-6)P.pop()}return P.length>=3?P:null}
+
+/* ============ DXF okuma ============ */
+function decodeDXF(buf){
+  const head=new TextDecoder('latin1').decode(buf.slice(0,Math.min(buf.byteLength,300000)));
+  const g=(name,code)=>{const m=head.match(new RegExp('\\$'+name+'\\s*\\r?\\n\\s*'+code+'\\s*\\r?\\n([^\\r\\n]*)'));return m?m[1].trim():''};
+  const ver=g('ACADVER',1),cp=g('DWGCODEPAGE',3),units=parseInt(g('INSUNITS',70)||'0',10)||0;
+  let enc='utf-8';
+  if(!ver||ver<'AC1021'){const m=cp.match(/(\d{3,4})/);enc=m?('windows-'+m[1]):'windows-1254';if(m&&m[1].length===3)enc='windows-1254'}
+  let txt;try{txt=new TextDecoder(enc).decode(buf)}catch(e){txt=new TextDecoder('windows-1254').decode(buf)}
+  return{txt,units,ver};
+}
+function parseDXF(txt){
+  const L=txt.split(/\r\n|\n|\r/);const recs=[],blocks={};let sec='',blk=null,cur=null;
+  const fin=()=>{if(!cur)return;if(cur.t==='BLOCK'){const nm=gv(cur,2)||('_b'+Object.keys(blocks).length);blocks[nm]={bx:gn(cur,10,0),by:gn(cur,20,0),ents:[]};blk=nm}else if(cur.blk!=null){if(blocks[cur.blk])blocks[cur.blk].ents.push(cur)}else recs.push(cur);cur=null};
+  for(let i=0;i+1<L.length;i+=2){
+    const c=parseInt(L[i],10);if(isNaN(c))continue;const v=L[i+1];
+    if(c===0){fin();const t=v.trim();
+      if(t==='SECTION'){sec=(L[i+3]||'').trim();i+=2;continue}
+      if(t==='ENDSEC'){sec='';continue}
+      if(t==='EOF')break;
+      if(sec==='BLOCKS'){if(t==='BLOCK'){cur={t:'BLOCK',g:[]};continue}if(t==='ENDBLK'){blk=null;continue}if(blk!=null)cur={t,g:[],blk};continue}
+      if(sec==='ENTITIES')cur={t,g:[],blk:null};continue}
+    if(cur)cur.g.push([c,v])}
+  fin();
+  const grp=list=>{const out=[];for(let i=0;i<list.length;i++){const e=list[i];
+    if(e.t==='POLYLINE'){e.verts=[];while(i+1<list.length&&list[i+1].t==='VERTEX')e.verts.push(list[++i]);if(i+1<list.length&&list[i+1].t==='SEQEND')i++;}
+    else if(e.t==='INSERT'){e.attrs=[];while(i+1<list.length&&list[i+1].t==='ATTRIB')e.attrs.push(list[++i]);if(e.attrs.length&&i+1<list.length&&list[i+1].t==='SEQEND')i++;}
+    else if(e.t==='VERTEX'||e.t==='SEQEND'||e.t==='ATTRIB')continue;
+    out.push(e)}return out};
+  for(const k in blocks)blocks[k].ents=grp(blocks[k].ents);
+  return{ents:grp(recs),blocks};
+}
+function gv(e,c){for(const p of e.g)if(p[0]===c)return p[1].trim();return null}
+function gn(e,c,d){const v=gv(e,c);const n=v==null?NaN:parseFloat(v);return isNaN(n)?d:n}
+function cleanText(s){return String(s||'').replace(/\\[ACcFfHhLlOoKkQqTtWwpP][^;\\{}]*;/g,'').replace(/\\P/g,' ').replace(/\\~/g,' ').replace(/[{}]/g,'').replace(/%%[cdp]/gi,'').trim()}
+function bulgeArc(x1,y1,x2,y2,b,out){const ang=4*Math.atan(b),dx=x2-x1,dy=y2-y1,c=Math.hypot(dx,dy);if(c<1e-12)return;const d=(c/2)/Math.tan(ang/2);const cx=(x1+x2)/2-dy/c*d,cy=(y1+y2)/2+dx/c*d;const R=Math.hypot(x1-cx,y1-cy),a1=Math.atan2(y1-cy,x1-cx);const n=Math.max(2,Math.ceil(Math.abs(ang)/(Math.PI/24)));for(let k=1;k<n;k++){const a=a1+ang*k/n;out.push([cx+R*Math.cos(a),cy+R*Math.sin(a)])}}
+function splinePts(e){
+  const deg=gn(e,71,3);const K=[],W=[],P=[],F=[];let cp=null,fp=null;
+  for(const [c,v] of e.g){const n=parseFloat(v);
+    if(c===40)K.push(n);else if(c===41)W.push(n);
+    else if(c===10){cp=[n,0,0];P.push(cp)}else if(c===20&&cp)cp[1]=n;else if(c===30&&cp)cp[2]=n;
+    else if(c===11){fp=[n,0,0];F.push(fp)}else if(c===21&&fp)fp[1]=n;else if(c===31&&fp)fp[2]=n}
+  const n=P.length;
+  if(n>deg&&K.length===n+deg+1){const t0=K[deg],t1=K[n],N=Math.max(24,n*10),out=[];const Wt=W.length===n?W:null;
+    for(let s=0;s<=N;s++){const t=t0+(t1-t0)*s/N;let k=deg;while(k<n-1&&t>=K[k+1])k++;
+      const d=[];for(let j=0;j<=deg;j++){const p=P[k-deg+j],w=Wt?Wt[k-deg+j]:1;d.push([p[0]*w,p[1]*w,p[2]*w,w])}
+      for(let r=1;r<=deg;r++)for(let j=deg;j>=r;j--){const i=k-deg+j,den=K[i+deg-r+1]-K[i],a=den?(t-K[i])/den:0;for(let q=0;q<4;q++)d[j][q]=(1-a)*d[j-1][q]+a*d[j][q]}
+      const D=d[deg];out.push([D[0]/D[3],D[1]/D[3],D[2]/D[3]])}return out}
+  if(F.length>1)return F;return P.length>1?P:[];
+}
+function convEnt(e,xf,lyOver,out,blocks,depth){
+  let ly=gv(e,8)||'0';if(lyOver&&ly==='0')ly=lyOver;
+  if(!depth&&gv(e,67)==='1')return;
+  const flip=gn(e,230,1)<0;const F=(x,y,z)=>xf([flip?-x:x,y,z||0]);
+  const t=e.t;
+  if(t==='LINE'){out.push({k:'pl',ly,c:false,pts:[F(gn(e,10,0),gn(e,20,0),gn(e,30,0)),F(gn(e,11,0),gn(e,21,0),gn(e,31,0))]})}
+  else if(t==='LWPOLYLINE'){const V=[];let cv=null;for(const [c,v] of e.g){if(c===10){cv={x:+v,y:0,b:0};V.push(cv)}else if(c===20&&cv)cv.y=+v;else if(c===42&&cv)cv.b=+v}
+    const cl=(gn(e,70,0)&1)===1,el=gn(e,38,0),raw=[];
+    for(let i=0;i<V.length;i++){raw.push([V[i].x,V[i].y]);const j=i+1<V.length?i+1:(cl?0:-1);if(j>=0&&V[i].b)bulgeArc(V[i].x,V[i].y,V[j].x,V[j].y,V[i].b,raw)}
+    if(raw.length>1)out.push({k:'pl',ly,c:cl,pts:raw.map(p=>F(p[0],p[1],el))})}
+  else if(t==='POLYLINE'){const fl=gn(e,70,0);if(fl&16||fl&64)return;const is3=(fl&8)===8,el=gn(e,30,0),cl=(fl&1)===1;const V=(e.verts||[]).filter(v=>!(gn(v,70,0)&16)).map(v=>({x:gn(v,10,0),y:gn(v,20,0),z:gn(v,30,0),b:gn(v,42,0)}));
+    const raw=[];for(let i=0;i<V.length;i++){raw.push([V[i].x,V[i].y,is3?V[i].z:el]);const j=i+1<V.length?i+1:(cl?0:-1);if(!is3&&j>=0&&V[i].b){const tmp=[];bulgeArc(V[i].x,V[i].y,V[j].x,V[j].y,V[i].b,tmp);tmp.forEach(p=>raw.push([p[0],p[1],el]))}}
+    if(raw.length>1)out.push({k:'pl',ly,c:cl,pts:raw.map(p=>F(p[0],p[1],p[2]))})}
+  else if(t==='SPLINE'){const P=splinePts(e);if(P.length>1)out.push({k:'pl',ly,c:(gn(e,70,0)&1)===1,pts:P.map(p=>xf([p[0],p[1],p[2]]))})}
+  else if(t==='ARC'||t==='CIRCLE'){const cx=gn(e,10,0),cy=gn(e,20,0),cz=gn(e,30,0),r=gn(e,40,0);let a1=0,a2=360;if(t==='ARC'){a1=gn(e,50,0);a2=gn(e,51,360);if(a2<a1)a2+=360}
+    const n=Math.max(8,Math.ceil((a2-a1)/7.5)),pts=[];for(let k=0;k<=n;k++){if(t==='CIRCLE'&&k===n)break;const a=(a1+(a2-a1)*k/n)*Math.PI/180;pts.push(F(cx+r*Math.cos(a),cy+r*Math.sin(a),cz))}out.push({k:'pl',ly,c:t==='CIRCLE',pts})}
+  else if(t==='POINT'){const p=F(gn(e,10,0),gn(e,20,0),gn(e,30,0));out.push({k:'pt',ly,x:p[0],y:p[1],z:p[2],t:''})}
+  else if(t==='TEXT'||t==='MTEXT'){let s='';if(t==='MTEXT'){for(const [c,v] of e.g)if(c===3)s+=v;s+=(gv(e,1)!=null?e.g.find(p=>p[0]===1)[1]:'')}else s=(e.g.find(p=>p[0]===1)||[0,''])[1];
+    s=cleanText(s);let x=gn(e,10,0),y=gn(e,20,0);if(t==='TEXT'&&(gn(e,72,0)||gn(e,73,0))&&gv(e,11)!=null){x=gn(e,11,x);y=gn(e,21,y)}
+    const p=F(x,y,gn(e,30,0));if(s)out.push({k:'tx',ly,x:p[0],y:p[1],z:p[2],s,h:gn(e,40,1)})}
+  else if(t==='3DFACE'){const seen=new Set();for(let i=0;i<4;i++){const p=xf([gn(e,10+i,0),gn(e,20+i,0),gn(e,30+i,0)]);const k=p[0].toFixed(3)+','+p[1].toFixed(3);if(seen.has(k))continue;seen.add(k);out.push({k:'pt',ly,x:p[0],y:p[1],z:p[2],t:'',face:1})}}
+  else if(t==='INSERT'){const nm=gv(e,2),B=blocks[nm];const ix=gn(e,10,0),iy=gn(e,20,0),iz=gn(e,30,0),sx=gn(e,41,1),sy=gn(e,42,1),rot=gn(e,50,0)*Math.PI/180,co=Math.cos(rot),si=Math.sin(rot);
+    let label='';for(const a of(e.attrs||[])){const s=cleanText((a.g.find(p=>p[0]===1)||[0,''])[1]);if(!label&&isKotText(s))label=s;const p=F(gn(a,10,0),gn(a,20,0),gn(a,30,0));if(s)out.push({k:'tx',ly:gv(a,8)||ly,x:p[0],y:p[1],z:p[2],s,h:gn(a,40,1)})}
+    const ip=F(ix,iy,iz);out.push({k:'pt',ly,x:ip[0],y:ip[1],z:ip[2],t:label,ins:nm});
+    if(B&&(depth||0)<4){const fx=flip?-1:1;const xf2=p=>{const x=(p[0]-B.bx)*sx,y=(p[1]-B.by)*sy;return xf([fx*(x*co-y*si+ix),x*si+y*co+iy,(p[2]||0)+iz])};for(const be of B.ents)convEnt(be,xf2,ly,out,blocks,(depth||0)+1)}}
+}
+function isKotText(s){return/^\s*[+±]?\s*-?\d{1,5}(?:[.,]\d{1,3})?\s*(m)?\s*$/i.test(String(s||''))}
+function kotVal(s){const m=String(s).match(/-?\d{1,5}(?:[.,]\d{1,3})?/);return m?pnum(m[0]):NaN}
+const UNIT={1:.0254,2:.3048,4:.001,5:.01,6:1};
+function guessRole(name,st){const n=name.toLocaleLowerCase('tr');
+  if(/marker|story|viewport|defpoints|çerçeve|cerceve|antet|pafta/.test(n))return'hide';
+  if(/e[şs]\s?y[üu]k|kontur|contour|isohips|izohips|topo|tesviye|e[ğg]ri/.test(n))return'contour';
+  if(/kot|elev|spot|nokta|point|h[öo]y|height/.test(n))return(st.pt||st.tx)?'kot':'contour';
+  if(/parsel|parcel|kadastro|s[ıi]n[ıi]r|property|lot\b|ada/.test(n))return'parcel';
+  if(/bina|yap[ıi]|build|ev\b/.test(n))return'building';
+  if(/yol|road|street|kald[ıi]r[ıi]m|asfalt/.test(n))return'road';
+  if(/yaz[ıi]|text|metin|label/.test(n))return'text';
+  if(st.pl)return'contour';if(st.tx)return'text';return'hide'}
+
+function importDXFText(txt,units,fileName){
+  const R=parseDXF(txt);const items=[];for(const e of R.ents)convEnt(e,p=>p,null,items,R.blocks,0);
+  const f=UNIT[units]||1;
+  const N=blank();N.name=fileName;N.units=UNIT[units]?units:6;N.imar=S?S.imar:N.imar;N.prog=S&&S.prog?S.prog:undefined;if(N.prog)N.prog.nodes.forEach(()=>0);
+  const st={};for(const it of items){const s=st[it.ly]||(st[it.ly]={pl:0,pt:0,tx:0});s[it.k]++}
+  for(const ly in st){const s=st[ly];N.layers[ly]={role:guessRole(ly,s),n:s.pl+s.pt+s.tx,pl:s.pl,pt:s.pt,tx:s.tx}}
+  for(const it of items){
+    if(it.k==='pl'){const p=[];let zmin=1e18,zmax=-1e18;for(const q of it.pts){p.push(q[0]*f,q[1]*f);const z=(q[2]||0)*f;if(z<zmin)zmin=z;if(z>zmax)zmax=z}
+      const e={id:N.eid++,ly:it.ly,p,c:it.c,zr:null,z:null,zs:'',zz:null};
+      if(zmax-zmin<1e-6)e.zr=zmin;else e.zz=it.pts.map(q=>(q[2]||0)*f);
+      N.ents.push(e)}
+    else if(it.k==='pt')N.pts.push({ly:it.ly,x:it.x*f,y:it.y*f,z:(it.z||0)*f,t:it.t||''});
+    else N.txs.push({ly:it.ly,x:it.x*f,y:it.y*f,s:it.s,h:(it.h||1)*f})}
+  return N;
+}
+function finishImport(N){
+  S=N;S.zzDxf=new Set(S.ents.filter(e=>e.zz).map(e=>e.id)).size>0;
+  pickParcel(true);setOrigin();autoKots();
+  HIST.u=[];HIST.r=[];
+  onTerrain(true);renderPanel();
+}
+function pickParcel(auto){
+  let cand=S.ents.filter(e=>e.c&&e.p.length>=6&&S.layers[e.ly].role==='parcel');
+  let note='';
+  if(!cand.length){cand=S.ents.filter(e=>e.c&&e.p.length>=6&&!['hide','building','road'].includes(S.layers[e.ly].role));note='auto'}
+  let best=null,ba=0;for(const e of cand){const P=[];for(let i=0;i<e.p.length;i+=2)P.push([e.p[i],e.p[i+1]]);const a=Math.abs(area(P));if(a>ba){ba=a;best=e}}
+  if(best&&ba>20){setParcel(best.id);if(auto&&note)toast('Parsel olarak en büyük kapalı çizgi seçildi ('+nf(ba,0)+' m²). Değiştirmek için Parsel aracıyla başka bir sınıra dokun.',6500)}
+}
+function setParcel(id){if(S.parcel!=null&&S.over[S.parcel]==='parcel')delete S.over[S.parcel];S.parcel=id;if(id!=null){S.over[id]='parcel';const P=parcelPoly();S.edges=P?P.map(()=>({t:'yan',d:3})):[]}else S.edges=[]}
+function setOrigin(){
+  const P=parcelPoly();let b=P?bboxPts([P.flat()]):null;
+  if(!b){const C=S.ents.filter(e=>roleOf(e)!=='hide');b=bboxPts(C.map(e=>e.p))}
+  if(!b)return;const ox=Math.floor(b[0]/10)*10,oy=Math.floor(b[1]/10)*10;if(!ox&&!oy)return;
+  S.origin=[S.origin[0]+ox,S.origin[1]+oy];
+  for(const e of S.ents)for(let i=0;i<e.p.length;i+=2){e.p[i]-=ox;e.p[i+1]-=oy}
+  for(const p of S.pts){p.x-=ox;p.y-=oy}for(const t of S.txs){t.x-=ox;t.y-=oy}
+  for(const m of S.masses){m.cx-=ox;m.cy-=oy}if(S.sec){S.sec.a[0]-=ox;S.sec.a[1]-=oy;S.sec.b[0]-=ox;S.sec.b[1]-=oy}
+}
+function rescale(newUnits){
+  const k=(UNIT[newUnits]||1)/(UNIT[S.units]||1);if(k===1)return;
+  const [ox,oy]=S.origin;const T=(x,y)=>[(x+ox)*k,(y+oy)*k];S.origin=[0,0];
+  for(const e of S.ents){for(let i=0;i<e.p.length;i+=2){const r=T(e.p[i],e.p[i+1]);e.p[i]=r[0];e.p[i+1]=r[1]}if(e.zr!=null)e.zr*=k;if(e.zs==='dxf'&&e.z!=null)e.z*=k;if(e.zz)e.zz=e.zz.map(z=>z*k)}
+  for(const p of S.pts){[p.x,p.y]=T(p.x,p.y);p.z*=k}for(const t of S.txs){[t.x,t.y]=T(t.x,t.y);t.h*=k}
+  for(const m of S.masses){[m.cx,m.cy]=T(m.cx,m.cy)}S.sec=null;S.units=newUnits;
+  setOrigin();if(S.parcel!=null){const P=parcelPoly();S.edges=P?P.map((_,i)=>S.edges[i]||{t:'yan',d:3}):[]}
+  autoKots();onTerrain(true);renderPanel();
+}
+
+/* ============ kotlar ============ */
+function autoKots(){
+  const C=contours();
+  for(const e of S.ents)if(e.zs==='dxf'||e.zs==='yazı'){e.z=null;e.zs=''}
+  const zs=new Set(C.filter(e=>e.zr!=null).map(e=>Math.round(e.zr*1000)));
+  if(zs.size>1)for(const e of C)if(e.z==null&&e.zs===''&&e.zr!=null){e.z=e.zr;e.zs='dxf'}
+  const T=S.txs.filter(t=>{const r=S.layers[t.ly]&&S.layers[t.ly].role;return(r==='text'||r==='contour')&&isKotText(t.s)});
+  const acc=new Map();
+  for(const t of T){let best=null,bd=Math.max(3,(t.h||1)*4);for(const e of C){if(e.zz)continue;const d=polyDist(t.x,t.y,e.p,e.c);if(d<bd){bd=d;best=e}}
+    if(best){if(!acc.has(best))acc.set(best,[]);acc.get(best).push(kotVal(t.s))}}
+  for(const [e,v] of acc){if(e.z!=null&&e.zs!=='')continue;v.sort((a,b)=>a-b);e.z=v[v.length>>1];e.zs='yazı'}
+}
+function kotPoints(){
+  const out=[];const numT=S.txs.filter(t=>isKotText(t.s));
+  for(const p of S.pts){const r=S.layers[p.ly]&&S.layers[p.ly].role;if(r!=='kot')continue;let z=Math.abs(p.z)>1e-6?p.z:(p.t&&isKotText(p.t)?kotVal(p.t):NaN);
+    if(!Number.isFinite(z)){let bd=2.5;for(const t of numT){const d=Math.hypot(t.x-p.x,t.y-p.y);if(d<bd){bd=d;z=kotVal(t.s)}}}
+    if(Number.isFinite(z))out.push([p.x,p.y,z])}
+  for(const t of S.txs){const r=S.layers[t.ly]&&S.layers[t.ly].role;if(r==='kot'&&isKotText(t.s)&&!S.pts.some(p=>p.ly===t.ly&&Math.hypot(p.x-t.x,p.y-t.y)<2.5))out.push([t.x,t.y,kotVal(t.s)])}
+  return out}
+
+/* ============ arazi ızgarası ============ */
+let G=null;
+function buildGrid(){
+  const C=contours(),Cz=C.filter(hasZ),K=kotPoints();const P=parcelPoly();
+  let db=bboxPts(Cz.map(e=>e.p).concat(K.length?[K.flatMap(k=>[k[0],k[1]])]:[]));
+  if(!db)db=bboxPts(C.map(e=>e.p));
+  let ext;
+  if(P){const pb=bboxPts([P.flat()]);const m=Math.max(10,.5*Math.max(pb[2]-pb[0],pb[3]-pb[1]));let e=[pb[0]-m,pb[1]-m,pb[2]+m,pb[3]+m];
+    if(db){const i=[Math.max(e[0],db[0]),Math.max(e[1],db[1]),Math.min(e[2],db[2]),Math.min(e[3],db[3])];e=(i[0]<i[2]&&i[1]<i[3])?i:pb}
+    ext=[Math.min(e[0],pb[0]),Math.min(e[1],pb[1]),Math.max(e[2],pb[2]),Math.max(e[3],pb[3])]}
+  else if(db){ext=db.slice();const cx=(ext[0]+ext[2])/2,cy=(ext[1]+ext[3])/2;ext=[Math.max(ext[0],cx-300),Math.max(ext[1],cy-300),Math.min(ext[2],cx+300),Math.min(ext[3],cy+300)]}
+  else ext=[0,0,40,30];
+  if(ext[2]-ext[0]<4){ext[0]-=2;ext[2]+=2}if(ext[3]-ext[1]<4){ext[1]-=2;ext[3]+=2}
+  const L=Math.max(ext[2]-ext[0],ext[3]-ext[1]);const h=Math.max(.25,L/170);
+  const nx=Math.ceil((ext[2]-ext[0])/h)+1,ny=Math.ceil((ext[3]-ext[1])/h)+1,N=nx*ny;
+  const x0=ext[0],y0=ext[1];
+  const sum=new Float64Array(N),cnt=new Uint16Array(N);
+  const put=(x,y,z)=>{const i=Math.round((x-x0)/h),j=Math.round((y-y0)/h);if(i<0||j<0||i>=nx||j>=ny)return;const k=j*nx+i;sum[k]+=z;cnt[k]++};
+  for(const e of Cz){const p=e.p,n=p.length/2,m=e.c?n:n-1;
+    for(let s=0;s<m;s++){const t=(s+1)%n,ax=p[2*s],ay=p[2*s+1],bx=p[2*t],by=p[2*t+1];
+      const za=e.z!=null?e.z:e.zz[s],zb=e.z!=null?e.z:e.zz[t];
+      if((ax<x0-h&&bx<x0-h)||(ay<y0-h&&by<y0-h)||(ax>ext[2]+h&&bx>ext[2]+h)||(ay>ext[3]+h&&by>ext[3]+h))continue;
+      const len=Math.hypot(bx-ax,by-ay),q=Math.max(1,Math.ceil(len/(h*.5)));for(let k=0;k<=q;k++){const u=k/q;put(ax+(bx-ax)*u,ay+(by-ay)*u,za+(zb-za)*u)}}}
+  for(const k of K)put(k[0],k[1],k[2]);
+  const E0=new Float32Array(N),fixed=new Uint8Array(N);let nf=0;const q=new Int32Array(N);let qh=0,qt=0;const seen=new Uint8Array(N);
+  for(let k=0;k<N;k++)if(cnt[k]){E0[k]=sum[k]/cnt[k];fixed[k]=1;seen[k]=1;q[qt++]=k;nf++}
+  let flat=false;
+  if(!nf){flat=true;E0.fill(0)}
+  else{while(qh<qt){const k=q[qh++],i=k%nx,j=(k-i)/nx;const nb=[i>0?k-1:-1,i<nx-1?k+1:-1,j>0?k-nx:-1,j<ny-1?k+nx:-1];for(const b of nb)if(b>=0&&!seen[b]){seen[b]=1;E0[b]=E0[k];q[qt++]=b}}
+    const t0=performance.now();for(let it=0;it<5000;it++){let md=0;
+      for(let j=0;j<ny;j++){const r=j*nx;for(let i=0;i<nx;i++){const k=r+i;if(fixed[k])continue;let s=0,c=0;if(i>0){s+=E0[k-1];c++}if(i<nx-1){s+=E0[k+1];c++}if(j>0){s+=E0[k-nx];c++}if(j<ny-1){s+=E0[k+nx];c++}
+        const d=s/c-E0[k];E0[k]+=1.88*d;const a=d<0?-d:d;if(a>md)md=a}}
+      if(md<2e-4||performance.now()-t0>700)break}}
+  let mn=1e18,mx=-1e18;for(let k=0;k<N;k++){if(E0[k]<mn)mn=E0[k];if(E0[k]>mx)mx=E0[k]}
+  G={ext,h,nx,ny,x0,y0,E0,E1:new Float32Array(E0),fixed,min:mn,max:mx,flat,nk:K.length};
+}
+function sampleE(A,x,y){if(!G)return 0;let fx=(x-G.x0)/G.h,fy=(y-G.y0)/G.h;fx=clamp(fx,0,G.nx-1.0001);fy=clamp(fy,0,G.ny-1.0001);const i=fx|0,j=fy|0,u=fx-i,v=fy-j,k=j*G.nx+i;
+  return A[k]*(1-u)*(1-v)+A[k+1]*u*(1-v)+A[k+G.nx]*(1-u)*v+A[k+G.nx+1]*u*v}
+
+/* ============ kütleler, kazı-dolgu, sayaçlar ============ */
+let sel=null,massMode='rect',polyDraw=null;
+function corners(m){const r=m.rot*Math.PI/180,c=Math.cos(r),s=Math.sin(r);return lpoly(m).map(([x,y])=>[m.cx+x*c-y*s,m.cy+x*s+y*c])}
+function toLocal(m,x,y){const r=-m.rot*Math.PI/180,c=Math.cos(r),s=Math.sin(r),dx=x-m.cx,dy=y-m.cy;return[dx*c-dy*s,dx*s+dy*c]}
+function inMass(m,x,y){const[l,k]=toLocal(m,x,y);if(m.poly&&m.poly.length>=3)return inPoly(l,k,m.poly);return Math.abs(l)<=m.w/2&&Math.abs(k)<=m.d/2}
+function zA(m){const C=corners(m);let s=0;for(const c of C)s+=sampleE(G.E0,c[0],c[1]);return Math.round(s/C.length*100)/100}
+function baseOf(m,d){d=d||0;const lo=m.on!=null?S.masses.find(x=>x.id===m.on):null;if(lo&&d<10)return baseOf(lo,d+1)+lo.kat*lo.fh;return m.auto?m.zA:m.z0}
+let ST={};
+function computeE1(){
+  if(!G)return;const{E0,E1,nx,ny,x0,y0,h}=G;E1.set(E0);
+  const range=Math.max(1,G.max-G.min);
+  for(const m of S.masses){m.zA=zA(m);if(m.on!=null)continue;const b=baseOf(m),bot=b-m.bod*m.fh;const R=Math.min(40,range*1.6+2);
+    const C=corners(m);let bx0=1e18,by0=1e18,bx1=-1e18,by1=-1e18;for(const c of C){bx0=Math.min(bx0,c[0]);by0=Math.min(by0,c[1]);bx1=Math.max(bx1,c[0]);by1=Math.max(by1,c[1])}
+    const i0=Math.max(0,Math.floor((bx0-R-x0)/h)),i1=Math.min(nx-1,Math.ceil((bx1+R-x0)/h)),j0=Math.max(0,Math.floor((by0-R-y0)/h)),j1=Math.min(ny-1,Math.ceil((by1+R-y0)/h));
+    const r=-m.rot*Math.PI/180,co=Math.cos(r),si=Math.sin(r),hw=m.w/2,hd=m.d/2;
+    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const x=x0+i*h-m.cx,y=y0+j*h-m.cy,lx=x*co-y*si,ly=x*si+y*co;
+      let sd;if(m.poly)sd=polySD(lx,ly,m.poly);else{const qx=Math.abs(lx)-hw,qy=Math.abs(ly)-hd;sd=Math.hypot(Math.max(qx,0),Math.max(qy,0))+Math.min(Math.max(qx,qy),0)}const k=j*nx+i;
+      if(sd<=0)E1[k]=bot;else{const hi=b+sd,lo=b-sd/1.5;if(E1[k]>hi)E1[k]=hi;else if(E1[k]<lo)E1[k]=lo}}}
+}
+function computeStats(){
+  const W=[];const P=parcelPoly();const pa=P?Math.abs(area(P)):NaN;
+  let taban=0,emsal=0;for(const m of S.masses){if(m.on==null)taban+=mArea(m);emsal+=mArea(m)*m.kat}
+  let kazi=0,dolgu=0;if(G){const a=G.h*G.h;for(let k=0;k<G.E0.length;k++){const d=G.E1[k]-G.E0[k];if(d>0)dolgu+=d*a;else kazi-=d*a}}
+  const I=S.imar,lt=pnum(I.taks),lk=pnum(I.kaks),lh=pnum(I.hmax),lkat=pnum(I.kat);
+  const taks=taban/pa,kaks=emsal/pa;
+  const lim=limitPoly();
+  const C=contours();const noZ=C.filter(e=>!hasZ(e)).length;
+  if(!C.length)W.push(['info','Eş yükselti eğrisi yok. Panelden katman rollerini kontrol et.']);
+  else if(G&&G.flat)W.push(['warn','Eğrilerin kotu yok, arazi düz görünüyor. "Sırayla" aracıyla eğrilerin üstünden bir çizgi çek.']);
+  else if(noZ)W.push(['warn',noZ+' eğrinin kotu yok (kırmızı). Kot aracıyla dokunup yazabilirsin.']);
+  if(!P)W.push(['warn','Parsel seçilmedi. Parsel aracıyla kapalı bir sınıra dokun.']);
+  if(Number.isFinite(lt)&&taks>lt+1e-9)W.push(['warn','TAKS '+nf(taks)+', sınır '+nf(lt)+'.']);
+  if(Number.isFinite(lk)&&kaks>lk+1e-9)W.push(['warn','KAKS '+nf(kaks)+', sınır '+nf(lk)+'.']);
+  const cap=capacity();const pb=progBrut();if(Number.isFinite(cap.cap)&&pb>cap.cap+1e-6)W.push(['warn','Program brüt '+nf(pb,0)+' m², kapasite '+nf(cap.cap,0)+' m².']);
+  for(const m of S.masses){const b=baseOf(m),g0=groundOf(m),H=baseOf(m)+m.kat*m.fh-baseOf(g0);const lo=m.on!=null?S.masses.find(x=>x.id===m.on):null;
+    if(lo&&corners(m).some(c=>!inMass(lo,c[0],c[1])))W.push(['info',m.name+', alttaki '+lo.name+' kütlesinden taşıyor (konsol).',m.id]);
+    if(lim&&lim.length>2&&corners(m).some(c=>!inPoly(c[0],c[1],lim)))W.push(['warn',m.name+' yapı yaklaşma sınırının dışına taşıyor.',m.id]);
+    if(Number.isFinite(lh)&&H>lh+1e-6)W.push(['warn',m.name+' yüksekliği '+nk(H)+' m, Hmax '+nk(lh)+' m.',m.id]);
+    if(Number.isFinite(lkat)&&m.kat>lkat)W.push(['warn',m.name+' '+m.kat+' kat, izin '+lkat+' kat.',m.id]);
+    if(G&&!G.flat&&m.on==null){const cs=corners(m).map(c=>sampleE(G.E0,c[0],c[1]));const dz=Math.max(...cs)-Math.min(...cs);
+      if(dz>2.5)W.push(['info',m.name+' altında '+nk(Math.round(dz*10)/10)+' m kot farkı var. Kademe ya da bodrum düşünülebilir.',m.id]);
+      const up=b-m.zA;if(!m.auto&&(up<-1e-6||up>1.2+1e-6))W.push(['warn',m.name+': zemin kat döşemesi ±0,00 noktasına (köşe ortalaması '+nf(m.zA)+') göre '+(up>0?'+':'')+nf(up)+' m. Yönetmelikte 0,00 ile +1,20 arası.',m.id])}}
+  ST={pa,taban,emsal,taks,kaks,kazi,dolgu,lt,lk,warns:W,lim,cap};
+}
+function limitPoly(){const P=parcelPoly();if(!P)return null;const sg=area(P)>0?1:-1;let Q=P.slice();
+  for(let i=0;i<P.length&&Q.length>2;i++){const a=P[i],b=P[(i+1)%P.length],dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy);if(L<1e-9)continue;const nx=-dy/L*sg,ny=dx/L*sg,d=(S.edges[i]&&pnum(S.edges[i].d))||0;Q=clipHalf(Q,a[0]+nx*d,a[1]+ny*d,nx,ny)}return Q}
+
+/* ============ akış ============ */
+let firstFit=true;
+function onTerrain(fit){buildGrid();computeE1();computeStats();buildTint();build3DTerrain();buildContours3D();update3D();if(fit||firstFit){fit2D();fit3D();firstFit=false}draw2D();drawSec();renderHUD();save()}
+let rafM=0;
+function onMasses(){if(rafM)return;rafM=requestAnimationFrame(()=>{rafM=0;syncFit();computeE1();computeStats();buildTint();update3DTerrain();update3D();draw2D();drawSec();renderHUD();syncMassFields();renderWarns();updFill();save()})}
+
+/* ============ geri al ============ */
+const HIST={u:[],r:[]};
+function snap(){return JSON.stringify({pg:S.prog||null,m:S.masses,z:S.ents.map(e=>[e.z,e.zs]),e:S.edges,p:S.parcel,o:S.over,i:S.imar,s:S.sec,l:Object.fromEntries(Object.entries(S.layers).map(([k,v])=>[k,v.role]))})}
+function pushU(){HIST.u.push(snap());if(HIST.u.length>80)HIST.u.shift();HIST.r=[];updUR()}
+function restore(js){const o=JSON.parse(js);const terr=JSON.stringify(o.z)!==JSON.stringify(S.ents.map(e=>[e.z,e.zs]))||o.p!==S.parcel||JSON.stringify(o.o)!==JSON.stringify(S.over)||Object.entries(o.l).some(([k,v])=>S.layers[k]&&S.layers[k].role!==v);
+  S.prog=o.pg||S.prog;S.masses=o.m;o.z.forEach((v,i)=>{if(S.ents[i]){S.ents[i].z=v[0];S.ents[i].zs=v[1]}});S.edges=o.e;S.parcel=o.p;S.over=o.o;S.imar=o.i;S.sec=o.s;for(const k in o.l)if(S.layers[k])S.layers[k].role=o.l[k];
+  if(sel!=null&&!S.masses.some(m=>m.id===sel))sel=null;
+  if(terr)onTerrain(false);else{computeE1();computeStats();buildTint();update3DTerrain();update3D();draw2D();drawSec();renderHUD();save()}
+  renderPanel();showKesit();renderProg();ensurePos();drawBub()}
+function undo(){if(!HIST.u.length)return;HIST.r.push(snap());restore(HIST.u.pop());updUR()}
+function redo(){if(!HIST.r.length)return;HIST.u.push(snap());restore(HIST.r.pop());updUR()}
+function updUR(){$('#bUndo').disabled=!HIST.u.length;$('#bRedo').disabled=!HIST.r.length}
+
+/* ============ 2D görünüm ============ */
+const C2=$('#cv2'),X2=C2.getContext('2d');
+const V2={s:10,tx:0,ty:0,w:1,h:1};
+let tool='sel',tmp=null,hlEdge=-1;
+const w2s=(x,y)=>[V2.tx+x*V2.s,V2.ty-y*V2.s];
+const s2w=(px,py)=>[(px-V2.tx)/V2.s,(V2.ty-py)/V2.s];
+function size2D(){const r=C2.getBoundingClientRect(),d=window.devicePixelRatio||1;if(r.width<2||r.height<2)return;if(V2.w>2&&V2.h>2&&(r.width!==V2.w||r.height!==V2.h)){const[cx,cy]=s2w(V2.w/2,V2.h/2);const k=Math.min(r.width/V2.w,r.height/V2.h);V2.s*=k;V2.tx=r.width/2-cx*V2.s;V2.ty=r.height/2+cy*V2.s}V2.w=r.width;V2.h=r.height;C2.width=Math.max(1,Math.round(r.width*d));C2.height=Math.max(1,Math.round(r.height*d));X2.setTransform(d,0,0,d,0,0)}
+function fit2D(){const e=G?G.ext:[0,0,40,30];const pl=84,pr=24,pt=60,pb=34;const s=Math.min((V2.w-pl-pr)/(e[2]-e[0]),(V2.h-pt-pb)/(e[3]-e[1]));V2.s=Math.max(.05,s);V2.tx=pl+(V2.w-pl-pr)/2-(e[0]+e[2])/2*V2.s;V2.ty=pt+(V2.h-pt-pb)/2+(e[1]+e[3])/2*V2.s}
+let tintC=null;
+function buildTint(){if(!G)return;if(!tintC)tintC=document.createElement('canvas');tintC.width=G.nx;tintC.height=G.ny;const c=tintC.getContext('2d'),im=c.createImageData(G.nx,G.ny),D=im.data;const r=Math.max(.01,G.max-G.min);
+  for(let j=0;j<G.ny;j++)for(let i=0;i<G.nx;i++){const k=j*G.nx+i,o=((G.ny-1-j)*G.nx+i)*4,d=G.E1[k]-G.E0[k];
+    if(d<-.03){const a=Math.min(.6,.22+(-d)*.08);D[o]=143;D[o+1]=90;D[o+2]=54;D[o+3]=a*255}
+    else if(d>.03){const a=Math.min(.65,.25+d*.1);D[o]=212;D[o+1]=167;D[o+2]=44;D[o+3]=a*255}
+    else if(!G.flat){const t=(G.E1[k]-G.min)/r;D[o]=120-t*30;D[o+1]=140-t*20;D[o+2]=110-t*30;D[o+3]=16+t*40}}
+  c.putImageData(im,0,0)}
+function pathPoly(p,closed){const n=p.length/2;X2.beginPath();for(let i=0;i<n;i++){const[x,y]=w2s(p[2*i],p[2*i+1]);i?X2.lineTo(x,y):X2.moveTo(x,y)}if(closed)X2.closePath()}
+function haloText(t,x,y,font,col,align){X2.font=font;X2.textAlign=align||'center';X2.textBaseline='middle';X2.lineJoin='round';X2.lineWidth=3.5;X2.strokeStyle='rgba(246,248,246,.95)';X2.strokeText(t,x,y);X2.fillStyle=col;X2.fillText(t,x,y)}
+function draw2D(){
+  const W=V2.w,H=V2.h;X2.clearRect(0,0,W,H);X2.fillStyle='#f6f8f6';X2.fillRect(0,0,W,H);
+  // ızgara
+  const steps=[1,2,5,10,20,50,100,200,500];let st=steps.find(s=>s*V2.s>=16)||1000;const[wx0,wy1]=s2w(0,0),[wx1,wy0]=s2w(W,H);
+  X2.lineWidth=1;for(let x=Math.floor(wx0/st)*st;x<=wx1;x+=st){const sx=Math.round(V2.tx+x*V2.s)+.5;X2.strokeStyle=(Math.round(x/st)%5===0)?'rgba(14,105,100,.13)':'rgba(14,105,100,.06)';X2.beginPath();X2.moveTo(sx,0);X2.lineTo(sx,H);X2.stroke()}
+  for(let y=Math.floor(wy0/st)*st;y<=wy1;y+=st){const sy=Math.round(V2.ty-y*V2.s)+.5;X2.strokeStyle=(Math.round(y/st)%5===0)?'rgba(14,105,100,.13)':'rgba(14,105,100,.06)';X2.beginPath();X2.moveTo(0,sy);X2.lineTo(W,sy);X2.stroke()}
+  if(G&&tintC){const[a,b]=w2s(G.x0-G.h/2,G.y0+(G.ny-.5)*G.h);X2.imageSmoothingEnabled=true;X2.drawImage(tintC,a,b,G.nx*G.h*V2.s,G.ny*G.h*V2.s)}
+  // katmanlar
+  for(const e of S.ents){const r=roleOf(e);if(r==='hide'||r==='contour'||e.id===S.parcel)continue;pathPoly(e.p,e.c);
+    if(r==='building'){X2.fillStyle='rgba(107,91,78,.16)';if(e.c)X2.fill();X2.strokeStyle='#6b5b4e';X2.lineWidth=1.2}else if(r==='road'){X2.strokeStyle='#8a8f86';X2.lineWidth=1.2}else{X2.strokeStyle='#9aa39e';X2.lineWidth=.8}X2.setLineDash([]);X2.stroke()}
+  const C=contours();const lab=[];
+  for(const e of C){pathPoly(e.p,e.c);if(hasZ(e)){const idx=e.z!=null&&Math.abs(e.z/5-Math.round(e.z/5))<1e-6;X2.strokeStyle=idx?'#26302c':'#4a5752';X2.lineWidth=idx?1.6:.9;X2.setLineDash([])}else{X2.strokeStyle='#c4402f';X2.lineWidth=1.5;X2.setLineDash([7,4])}X2.stroke();X2.setLineDash([]);
+    if(e.z!=null&&V2.s>3){const n=e.p.length/2,i=Math.floor(n/2);lab.push([e.p[2*i],e.p[2*i+1],nk(e.z)])}}
+  for(const l of lab){const[x,y]=w2s(l[0],l[1]);haloText(l[2],x,y,'12px "Barlow Semi Condensed",sans-serif','#3a4641')}
+  if(V2.s>5){for(const t of S.txs){const r=S.layers[t.ly]&&S.layers[t.ly].role;if(r!=='text'&&r!=='kot')continue;const[x,y]=w2s(t.x,t.y);if(x<-40||y<-40||x>W+40||y>H+40)continue;haloText(t.s,x,y,'11px "Barlow Semi Condensed",sans-serif','#7a6a3a','left')}}
+  for(const k of kotPointsCache){const[x,y]=w2s(k[0],k[1]);X2.strokeStyle='#2f5f8a';X2.lineWidth=1.2;X2.beginPath();X2.moveTo(x-4,y-4);X2.lineTo(x+4,y+4);X2.moveTo(x+4,y-4);X2.lineTo(x-4,y+4);X2.stroke();if(V2.s>4)haloText(nk(k[2]),x+6,y-8,'11px "Barlow Semi Condensed",sans-serif','#2f5f8a','left')}
+  // parsel
+  const P=parcelPoly();
+  if(P){X2.beginPath();P.forEach((p,i)=>{const[x,y]=w2s(p[0],p[1]);i?X2.lineTo(x,y):X2.moveTo(x,y)});X2.closePath();X2.strokeStyle='#1c2421';X2.lineWidth=2.2;X2.stroke();
+    const lim=ST.lim;if(lim&&lim.length>2){X2.beginPath();lim.forEach((p,i)=>{const[x,y]=w2s(p[0],p[1]);i?X2.lineTo(x,y):X2.moveTo(x,y)});X2.closePath();X2.strokeStyle='#0e6964';X2.lineWidth=1.4;X2.setLineDash([9,5]);X2.stroke();X2.setLineDash([])}
+    const sg=area(P)>0?1:-1;P.forEach((a,i)=>{const b=P[(i+1)%P.length],E=S.edges[i]||{t:'yan',d:3};const mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2,dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy);if(L*V2.s<50)return;const nx=-dy/L*sg,ny=dx/L*sg;const[x,y]=w2s(mx+nx*14/V2.s,my+ny*14/V2.s);
+      if(i===hlEdge){const[ax,ay]=w2s(a[0],a[1]),[bx,by]=w2s(b[0],b[1]);X2.strokeStyle='rgba(224,96,60,.7)';X2.lineWidth=6;X2.beginPath();X2.moveTo(ax,ay);X2.lineTo(bx,by);X2.stroke()}
+      haloText((E.t==='on'?'ön ':E.t==='arka'?'arka ':'yan ')+nk(pnum(E.d)||0),x,y,'500 12.5px "Barlow Semi Condensed",sans-serif',E.t==='on'?'#0e6964':'#4a5752')})}
+  // kütleler
+  const lvl=m=>{let d=0,x=m;while(x&&x.on!=null&&d<10){x=S.masses.find(y=>y.id===x.on);d++}return d};
+  for(const m of S.masses.slice().sort((a,b)=>lvl(a)-lvl(b))){const Cn=corners(m),on=m.id===sel;const nd=nodeById(m.pid),mc=nd?colOf(nd):'#0e6964';X2.beginPath();Cn.forEach((c,i)=>{const[x,y]=w2s(c[0],c[1]);i?X2.lineTo(x,y):X2.moveTo(x,y)});X2.closePath();
+    X2.fillStyle=hexA(mc,on?.34:.2);X2.fill();X2.strokeStyle=mc;X2.lineWidth=on?2.4:1.6;if(m.on!=null)X2.setLineDash([2,0]);X2.stroke();
+    const[cx,cy]=w2s(m.cx,m.cy);const big=Math.min(m.w,m.d)*V2.s;
+    if(big>34){haloText(m.name+' · '+m.kat+' kat'+(m.on!=null?' ↑':''),cx,cy-(big>60?9:0),'17px "Architects Daughter",cursive','#0b4f4b');if(big>60)haloText('±0,00 = '+nf(baseOf(m)),cx,cy+11,'12.5px "Barlow Semi Condensed",sans-serif','#2f3a36')}
+    if(on){if(m.poly)polyMids(Cn);Cn.forEach(c=>{const[x,y]=w2s(c[0],c[1]);X2.fillStyle='#fbfcfb';X2.strokeStyle='#0e6964';X2.lineWidth=1.6;X2.fillRect(x-5,y-5,10,10);X2.strokeRect(x-5,y-5,10,10)});
+      const rh=rotHandle(m);const[a,b]=w2s(rh[0],rh[1]),[t1,t2]=w2s(rh[2],rh[3]);X2.beginPath();X2.moveTo(t1,t2);X2.lineTo(a,b);X2.stroke();X2.beginPath();X2.arc(a,b,7,0,7);X2.fillStyle='#0e6964';X2.fill()}}
+  // kesit hattı
+  if(S.sec)drawSecLine(S.sec.a,S.sec.b,'A');
+  // geçici
+  if(tmp){X2.setLineDash([6,4]);X2.strokeStyle=tmp.k==='seq'?'#2f5f8a':tmp.k==='sec'?'#e0603c':'#0e6964';X2.lineWidth=1.6;
+    if(tmp.k==='rect'){const[a,b]=w2s(Math.min(tmp.a[0],tmp.b[0]),Math.max(tmp.a[1],tmp.b[1]));const w=Math.abs(tmp.b[0]-tmp.a[0]),d=Math.abs(tmp.b[1]-tmp.a[1]);X2.strokeRect(a,b,w*V2.s,d*V2.s);X2.setLineDash([]);haloText(nk(Math.round(w*10)/10)+' × '+nk(Math.round(d*10)/10)+' m · '+nf(w*d,0)+' m²',a+w*V2.s/2,b-12,'500 13px "Barlow Semi Condensed",sans-serif','#0b4f4b')}
+    else{const[a,b]=w2s(tmp.a[0],tmp.a[1]),[c,d]=w2s(tmp.b[0],tmp.b[1]);X2.beginPath();X2.moveTo(a,b);X2.lineTo(c,d);X2.stroke()}X2.setLineDash([])}
+  drawPolyDraw();
+  if(seqHits){for(const h of seqHits){const[x,y]=w2s(h.x,h.y);X2.fillStyle='#2f5f8a';X2.beginPath();X2.arc(x,y,4,0,7);X2.fill();if(h.v!=null)haloText(nk(h.v),x+8,y-9,'600 12.5px "Barlow Semi Condensed",sans-serif','#2f5f8a','left')}}
+  // kuzey + ölçek
+  const nx2=W-30,ny2=H-62;X2.strokeStyle='#26302c';X2.fillStyle='#26302c';X2.lineWidth=1.4;X2.beginPath();X2.moveTo(nx2,ny2+18);X2.lineTo(nx2,ny2-10);X2.stroke();X2.beginPath();X2.moveTo(nx2,ny2-16);X2.lineTo(nx2-6,ny2-4);X2.lineTo(nx2+6,ny2-4);X2.closePath();X2.fill();haloText('K',nx2,ny2+28,'600 13px "Barlow Semi Condensed",sans-serif','#26302c');
+  const sb=[1,2,5,10,20,50,100,200,500].find(s=>s*V2.s>=70)||1000;const sx=84,sy=H-16,L=sb*V2.s;X2.fillStyle='#26302c';X2.fillRect(sx,sy-3,L/2,4);X2.strokeStyle='#26302c';X2.lineWidth=1;X2.strokeRect(sx+.5,sy-3.5,L,5);haloText('0',sx,sy-12,'11px "Barlow Semi Condensed",sans-serif','#26302c');haloText(sb+' m',sx+L,sy-12,'11px "Barlow Semi Condensed",sans-serif','#26302c');
+}
+function drawSecLine(A,B,lb){const[a,b]=w2s(A[0],A[1]),[c,d]=w2s(B[0],B[1]);X2.strokeStyle='#e0603c';X2.lineWidth=1.6;X2.setLineDash([14,4,2,4]);X2.beginPath();X2.moveTo(a,b);X2.lineTo(c,d);X2.stroke();X2.setLineDash([]);
+  const dx=c-a,dy=d-b,L=Math.hypot(dx,dy)||1,nx=dy/L,ny=-dx/L;[[a,b],[c,d]].forEach(([x,y])=>{X2.lineWidth=2.4;X2.beginPath();X2.moveTo(x,y);X2.lineTo(x+nx*16,y+ny*16);X2.stroke();X2.beginPath();X2.moveTo(x+nx*16,y+ny*16);X2.lineTo(x+nx*16+dx/L*8,y+ny*16+dy/L*8);X2.stroke();haloText(lb,x-dx/L*12,y-dy/L*12,'600 15px "Barlow Semi Condensed",sans-serif','#c24e2c')})}
+function rotHandle(m){const r=m.rot*Math.PI/180,c=Math.cos(r),s=Math.sin(r),off=m.d/2+28/V2.s;return[m.cx-s*off,m.cy+c*off,m.cx-s*m.d/2,m.cy+c*m.d/2]}
+let kotPointsCache=[];
+
+/* --- 2D giriş --- */
+const ptrs=new Map();let gest=null,penSeen=false,drag=null;
+C2.addEventListener('contextmenu',e=>e.preventDefault());
+C2.addEventListener('pointerdown',e=>{
+  C2.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY,t:e.pointerType});if(e.pointerType==='pen')penSeen=true;
+  const touchNav=e.pointerType==='touch'&&(penSeen||ptrs.size>1);
+  if(ptrs.size===2&&[...ptrs.values()].every(p=>p.t==='touch')){if(drag&&drag.k==='move'&&drag.pushed)undo();drag=null;tmp=null;const[p1,p2]=[...ptrs.values()];gest={k:'pinch',d:Math.hypot(p1.x-p2.x,p1.y-p2.y),cx:(p1.x+p2.x)/2,cy:(p1.y+p2.y)/2,s:V2.s,tx:V2.tx,ty:V2.ty};draw2D();return}
+  if(touchNav||e.button===1||e.button===2||tool==='pan'){gest={k:'pan',x:e.offsetX,y:e.offsetY,tx:V2.tx,ty:V2.ty};return}
+  toolDown(e)});
+C2.addEventListener('pointermove',e=>{
+  const p=ptrs.get(e.pointerId);if(p){p.x=e.offsetX;p.y=e.offsetY}
+  if(gest&&gest.k==='pinch'&&ptrs.size>=2){const[p1,p2]=[...ptrs.values()];const d=Math.hypot(p1.x-p2.x,p1.y-p2.y),cx=(p1.x+p2.x)/2,cy=(p1.y+p2.y)/2;const k=d/gest.d;V2.s=clamp(gest.s*k,.02,400);V2.tx=cx-(gest.cx-gest.tx)*(V2.s/gest.s);V2.ty=cy-(gest.cy-gest.ty)*(V2.s/gest.s);draw2D();return}
+  if(gest&&gest.k==='pan'){V2.tx=gest.tx+e.offsetX-gest.x;V2.ty=gest.ty+e.offsetY-gest.y;draw2D();return}
+  if(drag)toolMove(e);else if(tool==='mass'&&polyDraw&&!gest){const[hx,hy]=s2w(e.offsetX,e.offsetY);polyHover(hx,hy)}});
+const endPtr=e=>{ptrs.delete(e.pointerId);if(gest){if(ptrs.size===0)gest=null;else if(gest.k==='pinch'){gest=null}return}if(drag)toolUp(e)};
+C2.addEventListener('pointerup',endPtr);C2.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);gest=null;drag=null;tmp=null;draw2D()});
+C2.addEventListener('wheel',e=>{e.preventDefault();const k=Math.exp(-e.deltaY*.0015);const s=clamp(V2.s*k,.02,400);V2.tx=e.offsetX-(e.offsetX-V2.tx)*(s/V2.s);V2.ty=e.offsetY-(e.offsetY-V2.ty)*(s/V2.s);V2.s=s;draw2D()},{passive:false});
+
+function hitMass(x,y){for(let i=S.masses.length-1;i>=0;i--)if(inMass(S.masses[i],x,y))return S.masses[i];return null}
+function hitContour(x,y){let best=null,bd=14/V2.s;for(const e of contours()){const d=polyDist(x,y,e.p,e.c);if(d<bd){bd=d;best=e}}return best}
+function hitEdge(x,y){const P=parcelPoly();if(!P)return -1;let bi=-1,bd=14/V2.s;P.forEach((a,i)=>{const b=P[(i+1)%P.length];const d=segD(x,y,a[0],a[1],b[0],b[1]);if(d<bd){bd=d;bi=i}});return bi}
+function snapAng(a){const P=parcelPoly();const cands=[0,90,180,270,-90,-180];if(P)P.forEach((p,i)=>{const q=P[(i+1)%P.length];const t=Math.atan2(q[1]-p[1],q[0]-p[0])*180/Math.PI;for(const o of[0,90,180,-90])cands.push(t+o)});
+  for(const c of cands){let d=((a-c)%360+540)%360-180;if(Math.abs(d)<3)return c}return Math.round(a)}
+function toolDown(e){
+  const[x,y]=s2w(e.offsetX,e.offsetY);closeCard(true);
+  if(tool==='sel'){const m=S.masses.find(m=>m.id===sel);
+    if(m){const rh=rotHandle(m);if(Math.hypot(x-rh[0],y-rh[1])*V2.s<16){drag={k:'rot',m};return}
+      if(m.poly){const C=corners(m);const vi=C.findIndex(c=>Math.hypot(x-c[0],y-c[1])*V2.s<16);if(vi>=0){drag={k:'vtx',m,vi,x:e.offsetX,y:e.offsetY,pushed:false};return}
+        for(let i=0;i<C.length;i++){const a=C[i],b=C[(i+1)%C.length];if(Math.hypot(b[0]-a[0],b[1]-a[1])*V2.s<44)continue;const mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;
+          if(Math.hypot(x-mx,y-my)*V2.s<14){pushU();m.poly.splice(i+1,0,toLocal(m,mx,my));m.fit=false;drag={k:'vtx',m,vi:i+1,x:e.offsetX,y:e.offsetY,pushed:true};onMasses();return}}}
+      else{const ci=C4(m).findIndex(c=>Math.hypot(x-c[0],y-c[1])*V2.s<14);if(ci>=0){drag={k:'size',m,ci,o:{...m}};return}}}
+    const h=hitMass(x,y);if(h){if(sel!==h.id){sel=h.id;renderPanel();update3D()}drag={k:'move',m:h,x,y,cx:h.cx,cy:h.cy,moved:false};draw2D();return}
+    if(sel!=null){sel=null;renderPanel();update3D();draw2D()}gest={k:'pan',x:e.offsetX,y:e.offsetY,tx:V2.tx,ty:V2.ty};return}
+  if(tool==='mass'){if(massMode==='poly'){drag={k:'ptap',x:e.offsetX,y:e.offsetY};return}drag={k:'rect'};tmp={k:'rect',a:[x,y],b:[x,y]};return}
+  if(tool==='sec'||tool==='seq'){drag={k:'line'};tmp={k:tool,a:[x,y],b:[x,y]};return}
+  if(tool==='kot'||tool==='parsel'){drag={k:'tap',x:e.offsetX,y:e.offsetY};return}
+}
+function toolMove(e){const[x,y]=s2w(e.offsetX,e.offsetY);const d=drag;
+  if(d.k==='ptap'){polyHover(x,y);return}
+  if(d.k==='vtx'){if(!d.pushed){if(Math.hypot(e.offsetX-d.x,e.offsetY-d.y)<6)return;pushU();d.pushed=true;d.m.fit=false}const m=d.m,P=m.poly;
+    const oth=P.filter((q,i)=>i!==d.vi).map(q=>{const r=m.rot*Math.PI/180,c=Math.cos(r),sn=Math.sin(r);return[m.cx+q[0]*c-q[1]*sn,m.cy+q[0]*sn+q[1]*c]});
+    const[sx,sy]=snapPt(x,y,oth,m.id);const[lx,ly]=toLocal(m,sx,sy);P[d.vi]=[Math.round(lx*100)/100,Math.round(ly*100)/100];normPoly(m);onMasses();return}
+  if(d.k==='move'){if(!d.pushed){pushU();d.pushed=true}d.m.cx=Math.round((d.cx+x-d.x)*20)/20;d.m.cy=Math.round((d.cy+y-d.y)*20)/20;onMasses();return}
+  if(d.k==='rot'){if(!d.pushed){pushU();d.pushed=true}const a=Math.atan2(y-d.m.cy,x-d.m.cx)*180/Math.PI-90;d.m.rot=snapAng(a);onMasses();return}
+  if(d.k==='size'){if(!d.pushed){pushU();d.pushed=true;d.m.fit=false}const o=d.o,sgn=[[-1,-1],[1,-1],[1,1],[-1,1]][d.ci];const[lx,ly]=toLocal(o,x,y);const ox=-sgn[0]*o.w/2,oy=-sgn[1]*o.d/2;
+    let w=Math.max(1,Math.round(sgn[0]*(lx-ox)*10)/10),dd=Math.max(1,Math.round(sgn[1]*(ly-oy)*10)/10);const lcx=ox+sgn[0]*w/2,lcy=oy+sgn[1]*dd/2,r=o.rot*Math.PI/180;
+    d.m.w=w;d.m.d=dd;d.m.cx=o.cx+lcx*Math.cos(r)-lcy*Math.sin(r);d.m.cy=o.cy+lcx*Math.sin(r)+lcy*Math.cos(r);onMasses();return}
+  if(d.k==='rect'||d.k==='line'){tmp.b=[x,y];draw2D()}}
+function toolUp(e){const d=drag;drag=null;const[x,y]=s2w(e.offsetX,e.offsetY);
+  if(d.k==='move'&&d.pushed){stackCheck(d.m)}
+  if(d.k==='vtx'){if(!d.pushed)vtxCard(d.m,d.vi);else{stackCheck(d.m);renderPanel()}return}
+  if(d.k==='ptap'){if(Math.hypot(e.offsetX-d.x,e.offsetY-d.y)>12)return;polyAdd(x,y);return}
+  if(d.k==='move'||d.k==='rot'||d.k==='size'){renderPanel();return}
+  if(d.k==='rect'){const a=tmp.a,b=tmp.b;tmp=null;const w=Math.round(Math.abs(b[0]-a[0])*10)/10,dd=Math.round(Math.abs(b[1]-a[1])*10)/10;
+    if(w>=1&&dd>=1){pushU();const m={id:S.seq,name:'K'+S.seq,cx:(a[0]+b[0])/2,cy:(a[1]+b[1])/2,w,d:dd,rot:0,kat:3,fh:3,bod:0,auto:true,z0:0,zA:0};S.seq++;S.masses.push(m);sel=m.id;setTool('sel');computeE1();m.z0=m.zA;onMasses();renderPanel();update3D();nameMassCard(m)}else draw2D();return}
+  if(d.k==='line'){const a=tmp.a,b=tmp.b,k=tmp.k;tmp=null;if(Math.hypot(b[0]-a[0],b[1]-a[1])*V2.s<20){draw2D();return}
+    if(k==='sec'){pushU();S.sec={a,b};autoKesit();draw2D();update3D();drawSec();save()}else seqCard(a,b);return}
+  if(d.k==='tap'){if(Math.hypot(e.offsetX-d.x,e.offsetY-d.y)>12)return;
+    if(tool==='kot'){const c=hitContour(x,y);if(c)kotCard(c);else toast('Bir eş yükselti eğrisine dokun.',2500)}
+    else{const ei=hitEdge(x,y);if(ei>=0){edgeCard(ei);return}const cand=S.ents.filter(e=>e.c&&e.p.length>=6&&roleOf(e)!=='hide'&&e.id!==S.parcel).filter(e=>{const P=[];for(let i=0;i<e.p.length;i+=2)P.push([e.p[i],e.p[i+1]]);return inPoly(x,y,P)||polyDist(x,y,e.p,true)<14/V2.s});
+      if(cand.length){const e=cand.sort((a,b)=>bboxArea(a)-bboxArea(b))[0];parcelCard(e)}else toast('Kapalı bir sınıra ya da parsel kenarına dokun.',2600)}}}
+function bboxArea(e){const b=bboxPts([e.p]);return(b[2]-b[0])*(b[3]-b[1])}
+function setTool(t){tool=t;if(t!=='mass')polyDraw=null;{const mb=document.getElementById('massBar');if(mb){mb.hidden=t!=='mass';updMassBar()}}document.querySelectorAll('.tb[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t));C2.style.cursor=t==='pan'?'grab':t==='sel'?'default':'crosshair';hlEdge=-1;draw2D()}
+
+/* ============ kartlar ============ */
+let seqHits=null;
+function openCard(html,mount){const c=$('#card');c.innerHTML=html;c.hidden=false;c.querySelector('.x').onclick=()=>closeCard();mount&&mount(c);const f=c.querySelector('input');if(f&&matchMedia('(pointer:fine)').matches)f.focus()}
+function closeCard(keep){const c=$('#card');if(c.hidden)return;c.hidden=true;c.innerHTML='';if(seqHits){seqHits=null}hlEdge=-1;if(!keep)draw2D();else draw2D()}
+function kotCard(e){const cur=e.z!=null?nk(e.z):'';
+  openCard(`<div class="card-h"><strong>Eğri kotu</strong><button class="x" aria-label="Kapat">×</button></div>
+  <p>${e.zs?('Kaynak: '+({dxf:'DXF Z değeri',yazı:'yanındaki yazı',el:'elle girildi',sıra:'sırayla kotlandı'}[e.zs]||e.zs)):'Bu eğrinin kotu yok.'}</p>
+  <div class="row"><input class="tin grow" id="kIn" type="text" inputmode="decimal" placeholder="örn. 102,5" value="${cur}" style="flex:1"><button class="btn" id="kDel">Kotu sil</button><button class="btn primary" id="kOk">Kaydet</button></div>`,c=>{
+    const ok=()=>{const v=pnum($('#kIn').value);if(!Number.isFinite(v)){toast('Bir sayı yaz, örneğin 102,5',2500);return}pushU();e.z=v;e.zs='el';closeCard();onTerrain(false);renderPanel()};
+    $('#kOk').onclick=ok;$('#kIn').onkeydown=ev=>{if(ev.key==='Enter')ok()};$('#kDel').onclick=()=>{pushU();e.z=null;e.zs='';closeCard();onTerrain(false);renderPanel()}})}
+function seqCard(a,b){const C=contours();const hits=[];
+  for(const e of C){const p=e.p,n=p.length/2,m=e.c?n:n-1;let bt=null;for(let i=0;i<m;i++){const j=(i+1)%n;const t=segInt(a[0],a[1],b[0],b[1],p[2*i],p[2*i+1],p[2*j],p[2*j+1]);if(t!=null&&(bt==null||t<bt))bt=t}
+    if(bt!=null)hits.push({e,t:bt,x:a[0]+(b[0]-a[0])*bt,y:a[1]+(b[1]-a[1])*bt,v:null})}
+  hits.sort((p,q)=>p.t-q.t);if(!hits.length){toast('Çizgi hiçbir eğriyi kesmedi.',2500);draw2D();return}
+  seqHits=hits;const f0=hits[0].e.z!=null?hits[0].e.z:100;
+  openCard(`<div class="card-h"><strong>Sırayla kotla · ${hits.length} eğri</strong><button class="x" aria-label="Kapat">×</button></div>
+  <p>Çizginin başladığı yerden itibaren kestiği eğrilere sırayla kot verilir. Önizleme haritada.</p>
+  <div class="grid2"><label>İlk kot<input class="tin" id="sF" type="text" inputmode="decimal" value="${nk(f0)}"></label><label>Aralık<span class="inunit"><input class="tin" id="sS" type="text" inputmode="decimal" value="1"><em>m</em></span></label></div>
+  <div class="row"><div class="chips" style="margin-right:auto"><button id="sUp" class="on">Yükseliyor</button><button id="sDn">Alçalıyor</button></div><button class="btn primary" id="sOk">Uygula</button></div>`,c=>{
+    let dir=1;const prev=()=>{const f=pnum($('#sF').value),s=pnum($('#sS').value);hits.forEach((h,i)=>h.v=(Number.isFinite(f)&&Number.isFinite(s))?Math.round((f+dir*i*s)*1000)/1000:null);draw2D()};
+    $('#sF').oninput=prev;$('#sS').oninput=prev;$('#sUp').onclick=()=>{dir=1;$('#sUp').classList.add('on');$('#sDn').classList.remove('on');prev()};$('#sDn').onclick=()=>{dir=-1;$('#sDn').classList.add('on');$('#sUp').classList.remove('on');prev()};
+    $('#sOk').onclick=()=>{if(hits.some(h=>h.v==null)){toast('İlk kot ve aralığa sayı yaz.',2500);return}pushU();hits.forEach(h=>{h.e.z=h.v;h.e.zs='sıra'});closeCard();onTerrain(false);renderPanel();const left=contours().filter(e=>!hasZ(e)).length;toast(hits.length+' eğri kotlandı'+(left?(', '+left+' eğri hâlâ kotsuz.'):'.'),3500)};prev()})}
+function edgeCard(i){hlEdge=i;draw2D();const E=S.edges[i]||{t:'yan',d:3};const P=parcelPoly(),a=P[i],b=P[(i+1)%P.length];
+  openCard(`<div class="card-h"><strong>Parsel kenarı ${i+1} · ${nk(Math.round(Math.hypot(b[0]-a[0],b[1]-a[1])*100)/100)} m</strong><button class="x" aria-label="Kapat">×</button></div>
+  <div class="row" style="justify-content:space-between"><div class="chips" id="eT"><button data-t="on">Ön</button><button data-t="yan">Yan</button><button data-t="arka">Arka</button></div>
+  <span class="inunit" style="width:110px"><input class="tin" id="eD" type="text" inputmode="decimal" value="${nk(pnum(E.d)||0)}"><em>m</em></span></div>
+  <p>Planda başka bir değer varsa onu yaz. Yapı yaklaşma sınırı kesik çizgiyle görünür.</p>`,c=>{
+    let t=E.t;const paint=()=>c.querySelectorAll('#eT button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));paint();let pushed=false;
+    const apply=()=>{if(!pushed){pushU();pushed=true}S.edges[i]={t,d:pnum($('#eD').value)||0};computeStats();draw2D();renderHUD();renderPanel();save()};
+    c.querySelectorAll('#eT button').forEach(b=>b.onclick=()=>{t=b.dataset.t;$('#eD').value=nk(t==='on'?5:3);paint();apply()});$('#eD').oninput=apply})}
+function parcelCard(e){
+  openCard(`<div class="card-h"><strong>Parsel</strong><button class="x" aria-label="Kapat">×</button></div>
+  <p>Bu kapalı çizgi parsel sınırı olsun mu? Çekme mesafeleri sıfırlanır.</p>
+  <div class="row"><button class="btn" id="pNo">Vazgeç</button><button class="btn primary" id="pOk">Parsel yap</button></div>`,c=>{
+    $('#pNo').onclick=()=>closeCard();$('#pOk').onclick=()=>{pushU();setParcel(e.id);autoKots();closeCard();onTerrain(false);renderPanel();toast('Parsel değişti. Ön kenara dokunup ön bahçe mesafesini gir.',3500)}})}
+
+/* ============ 3D ============ */
+const R3={};
+function init3D(){
+  if(!window.THREE){$('#hint3').textContent='3D kütüphanesi yüklenemedi. Sayfayı yenile.';return false}
+  const cv=$('#cv3');R3.r=new THREE.WebGLRenderer({canvas:cv,antialias:true});R3.r.setPixelRatio(Math.min(2,window.devicePixelRatio||1));R3.r.shadowMap.enabled=true;R3.r.shadowMap.type=THREE.PCFSoftShadowMap;
+  R3.scene=new THREE.Scene();R3.camP=new THREE.PerspectiveCamera(35,1,.1,5000);R3.camO=new THREE.OrthographicCamera(-1,1,1,-1,-1000,5000);R3.akso=true;R3.cam=R3.camO;
+  R3.scene.add(new THREE.HemisphereLight(0xf4f6f2,0x8a8270,.75));R3.sun=new THREE.DirectionalLight(0xffffff,.65);R3.sun.castShadow=true;R3.sun.shadow.mapSize.set(2048,2048);R3.sun.shadow.bias=-.0005;R3.scene.add(R3.sun);R3.scene.add(R3.sun.target);
+  R3.terrMat=new THREE.MeshLambertMaterial({vertexColors:true});R3.ghostMat=new THREE.MeshBasicMaterial({color:0x26302c,transparent:true,opacity:.14,depthWrite:false,side:THREE.DoubleSide,wireframe:true});
+  R3.skirtMat=new THREE.MeshLambertMaterial({color:0xa7906f,side:THREE.DoubleSide});
+  R3.matUp=new THREE.MeshLambertMaterial({color:0xf3f1ea});R3.matSel=new THREE.MeshLambertMaterial({color:0xbfe0db});R3.matBod=new THREE.MeshLambertMaterial({color:0x8e9893});
+  R3.edgeMat=new THREE.LineBasicMaterial({color:0x26302c});R3.edgeSel=new THREE.LineBasicMaterial({color:0x0e6964});
+  R3.lines=new THREE.Group();R3.scene.add(R3.lines);R3.cont=new THREE.Group();R3.scene.add(R3.cont);R3.mass=new THREE.Group();R3.scene.add(R3.mass);
+  makeCtl();setBg3();return true}
+function setBg3(){if(!R3.scene)return;R3.scene.background=new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--desk').trim()||'#dde3e0');render3()}
+function makeCtl(){const old=R3.ctl;const tg=old?old.target.clone():new THREE.Vector3();if(old)old.dispose();R3.ctl=new THREE.OrbitControls(R3.cam,$('#cv3'));R3.ctl.target.copy(tg);R3.ctl.maxPolarAngle=Math.PI*.495;R3.ctl.addEventListener('change',render3);R3.ctl.update()}
+function size3(){if(!R3.r)return;const r=$('#c3wrap').getBoundingClientRect();R3.r.setSize(r.width,r.height,false);const a=r.width/Math.max(1,r.height);R3.camP.aspect=a;R3.camP.updateProjectionMatrix();const hh=R3.oh||30;R3.camO.left=-hh*a;R3.camO.right=hh*a;R3.camO.top=hh;R3.camO.bottom=-hh;R3.camO.updateProjectionMatrix();render3()}
+const T3=(x,y,z)=>new THREE.Vector3(x,z-(G?G.min:0),-y);
+function build3DTerrain(){if(!R3.r||!G)return;
+  for(const k of['terr','ghost','skirt'])if(R3[k]){R3.scene.remove(R3[k]);R3[k].geometry.dispose()}
+  const{nx,ny}=G,N=nx*ny;const idx=new Uint32Array((nx-1)*(ny-1)*6);let q=0;for(let j=0;j<ny-1;j++)for(let i=0;i<nx-1;i++){const k=j*nx+i;idx[q++]=k;idx[q++]=k+1;idx[q++]=k+nx;idx[q++]=k+1;idx[q++]=k+nx+1;idx[q++]=k+nx}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(N*3),3));g.setAttribute('color',new THREE.BufferAttribute(new Float32Array(N*3),3));g.setIndex(new THREE.BufferAttribute(idx,1));
+  R3.terr=new THREE.Mesh(g,R3.terrMat);R3.terr.receiveShadow=true;R3.scene.add(R3.terr);
+  const g2=new THREE.BufferGeometry();g2.setAttribute('position',new THREE.BufferAttribute(new Float32Array(N*3),3));g2.setIndex(new THREE.BufferAttribute(idx,1));
+  R3.ghost=new THREE.Mesh(g2,R3.ghostMat);R3.ghost.visible=!!R3.showGhost;R3.scene.add(R3.ghost);
+  const gp=g2.attributes.position.array;for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const k=j*nx+i,x=G.x0+i*G.h,y=G.y0+j*G.h;gp[k*3]=x;gp[k*3+1]=G.E0[k]-G.min+.02;gp[k*3+2]=-y}
+  const sk=new THREE.BufferGeometry();R3.skirt=new THREE.Mesh(sk,R3.skirtMat);R3.scene.add(R3.skirt);
+  const ext=G.ext,L=Math.max(ext[2]-ext[0],ext[3]-ext[1]);const c=T3((ext[0]+ext[2])/2,(ext[1]+ext[3])/2,G.min);
+  R3.sun.position.set(c.x-.45*L,(G.max-G.min)+L*.9,c.z+.75*L);R3.sun.target.position.copy(c);const sc=R3.sun.shadow.camera;sc.left=-L;sc.right=L;sc.top=L;sc.bottom=-L;sc.near=1;sc.far=L*4;sc.updateProjectionMatrix();
+  update3DTerrain()}
+function update3DTerrain(){if(!R3.terr)return;const{nx,ny,E0,E1}=G;const pos=R3.terr.geometry.attributes.position.array,col=R3.terr.geometry.attributes.color.array;const r=Math.max(.01,G.max-G.min);
+  const lo=[.80,.83,.74],hi=[.93,.92,.86],cut=[.62,.45,.33],fil=[.86,.73,.36];
+  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const k=j*nx+i,x=G.x0+i*G.h,y=G.y0+j*G.h;pos[k*3]=x;pos[k*3+1]=E1[k]-G.min;pos[k*3+2]=-y;
+    const t=G.flat?.5:(E1[k]-G.min)/r;let c=[lo[0]+(hi[0]-lo[0])*t,lo[1]+(hi[1]-lo[1])*t,lo[2]+(hi[2]-lo[2])*t];const d=E1[k]-E0[k];
+    if(d<-.03){const a=Math.min(1,.55+(-d)*.12);c=c.map((v,q)=>v*(1-a)+cut[q]*a)}else if(d>.03){const a=Math.min(1,.55+d*.12);c=c.map((v,q)=>v*(1-a)+fil[q]*a)}
+    col[k*3]=c[0];col[k*3+1]=c[1];col[k*3+2]=c[2]}
+  R3.terr.geometry.attributes.position.needsUpdate=true;R3.terr.geometry.attributes.color.needsUpdate=true;R3.terr.geometry.computeVertexNormals();R3.terr.geometry.computeBoundingSphere();
+  // etek
+  let mn=1e18;for(let k=0;k<E1.length;k++)if(E1[k]<mn)mn=E1[k];const base=mn-G.min-Math.max(2,(G.max-G.min)*.15);const ring=[];
+  for(let i=0;i<nx;i++)ring.push(i);for(let j=1;j<ny;j++)ring.push(j*nx+nx-1);for(let i=nx-2;i>=0;i--)ring.push((ny-1)*nx+i);for(let j=ny-2;j>=0;j--)ring.push(j*nx);
+  const v=[];for(let s=0;s<ring.length-1;s++){const a=ring[s],b=ring[s+1];const ax=pos[a*3],ay=pos[a*3+1],az=pos[a*3+2],bx=pos[b*3],by=pos[b*3+1],bz=pos[b*3+2];v.push(ax,ay,az,bx,by,bz,ax,base,az,bx,by,bz,bx,base,bz,ax,base,az)}
+  const sk=R3.skirt.geometry;sk.setAttribute('position',new THREE.BufferAttribute(new Float32Array(v),3));sk.computeVertexNormals();sk.computeBoundingSphere()}
+function buildContours3D(){if(!R3.cont)return;disposeGroup(R3.cont);if(!G)return;const mat=new THREE.LineBasicMaterial({color:0x3d4a44,transparent:true,opacity:.75}),red=new THREE.LineBasicMaterial({color:0xc4402f});
+  for(const e of contours()){const pts=[];const n=e.p.length/2;const ex=G.ext;
+    for(let i=0;i<n;i++){const x=e.p[2*i],y=e.p[2*i+1];if(x<ex[0]-.01||y<ex[1]-.01||x>ex[2]+.01||y>ex[3]+.01){if(pts.length>1)addL(pts);pts.length=0;continue}
+      const z=e.z!=null?e.z:e.zz?e.zz[i]:sampleE(G.E0,x,y);pts.push(T3(x,y,z+.03))}
+    if(e.c&&pts.length>2)pts.push(pts[0].clone());if(pts.length>1)addL(pts);
+    function addL(P){const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(P.slice()),hasZ(e)?mat:red);R3.cont.add(l)}}}
+function disposeGroup(g){while(g.children.length){const c=g.children.pop();if(c.geometry)c.geometry.dispose();if(c.children&&c.children.length)disposeGroup(c)}}
+function drape(P,closed,mat,dashed){const pts=[];const n=P.length,m=closed?n:n-1;for(let i=0;i<m;i++){const a=P[i],b=P[(i+1)%n],L=Math.hypot(b[0]-a[0],b[1]-a[1]),q=Math.max(1,Math.ceil(L/(G.h)));for(let k=0;k<q;k++){const x=a[0]+(b[0]-a[0])*k/q,y=a[1]+(b[1]-a[1])*k/q;pts.push(T3(x,y,sampleE(G.E1,x,y)+.08))}}
+  if(!closed){const b=P[n-1];pts.push(T3(b[0],b[1],sampleE(G.E1,b[0],b[1])+.08))}else pts.push(pts[0].clone());const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),mat);if(dashed)l.computeLineDistances();return l}
+function update3D(){if(!R3.r||!G)return;disposeGroup(R3.lines);disposeGroup(R3.mass);
+  const P=parcelPoly();if(P){R3.lines.add(drape(P,true,new THREE.LineBasicMaterial({color:0x1c2421})));const lim=ST.lim;if(lim&&lim.length>2)R3.lines.add(drape(lim,true,new THREE.LineDashedMaterial({color:0x0e6964,dashSize:.8,gapSize:.5}),true))}
+  for(const e of S.ents){const r=roleOf(e);if(r!=='building'&&r!=='road')continue;const P2=[];for(let i=0;i<e.p.length;i+=2)P2.push([e.p[i],e.p[i+1]]);const b=bboxPts([e.p]);if(b[2]<G.ext[0]||b[0]>G.ext[2]||b[3]<G.ext[1]||b[1]>G.ext[3])continue;
+    if(r==='building'&&e.c){const sh=new THREE.Shape(P2.map(p=>new THREE.Vector2(p[0],p[1])));const z=Math.min(...P2.map(p=>sampleE(G.E1,p[0],p[1])));const g=new THREE.ExtrudeGeometry(sh,{depth:6,bevelEnabled:false});g.rotateX(-Math.PI/2);const ms=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:0xcfc6bb}));ms.position.y=z-G.min;ms.castShadow=ms.receiveShadow=true;R3.lines.add(ms)}
+    else R3.lines.add(drape(P2,e.c,new THREE.LineBasicMaterial({color:r==='road'?0x7d827a:0x6b5b4e})))}
+  if(S.sec){const a=S.sec.a,b=S.sec.b;R3.lines.add(drape([a,b],false,new THREE.LineBasicMaterial({color:0xe0603c})));
+    let top=G.max;for(const m of S.masses)top=Math.max(top,baseOf(m)+m.kat*m.fh);const bot=G.min-2;const L=Math.hypot(b[0]-a[0],b[1]-a[1]);
+    const pg=new THREE.PlaneGeometry(L,top-bot+2);const pm=new THREE.Mesh(pg,new THREE.MeshBasicMaterial({color:0xe0603c,transparent:true,opacity:.1,side:THREE.DoubleSide,depthWrite:false}));
+    pm.position.copy(T3((a[0]+b[0])/2,(a[1]+b[1])/2,(top+bot)/2+1));pm.rotation.y=Math.atan2(b[1]-a[1],b[0]-a[0]);R3.lines.add(pm)}
+  const cap=ST.cap;if(R3.env!==false&&cap&&ST.lim&&ST.lim.length>2&&Number.isFinite(cap.H)){const L=ST.lim;const zs=L.map(p=>sampleE(G.E0,p[0],p[1]));const b0=zs.reduce((s,z)=>s+z,0)/zs.length,bot=Math.min(...zs)-.3;const sh=new THREE.Shape(L.map(p=>new THREE.Vector2(p[0],p[1])));const g=new THREE.ExtrudeGeometry(sh,{depth:b0+cap.H-bot,bevelEnabled:false});g.rotateX(-Math.PI/2);const ms=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:0x0e6964,transparent:true,opacity:.08,depthWrite:false,side:THREE.DoubleSide}));ms.position.y=bot-G.min;R3.lines.add(ms);const eg=new THREE.LineSegments(new THREE.EdgesGeometry(g),new THREE.LineBasicMaterial({color:0x0e6964,transparent:true,opacity:.55}));eg.position.y=ms.position.y;R3.lines.add(eg)}
+  for(const m of S.masses){const b=baseOf(m),on=m.id===sel;const grp=new THREE.Group();const nd=nodeById(m.pid);const mat=nd?new THREE.MeshLambertMaterial({color:tint(colOf(nd),on?.45:.62)}):(on?R3.matSel:R3.matUp);grp.position.copy(T3(m.cx,m.cy,b));grp.rotation.y=m.rot*Math.PI/180;
+    for(let k=-effBod(m);k<m.kat;k++){const pg=m.poly&&m.poly.length>=3;let g;if(pg){g=new THREE.ExtrudeGeometry(new THREE.Shape(m.poly.map(q=>new THREE.Vector2(q[0],q[1]))),{depth:m.fh-.02,bevelEnabled:false});g.rotateX(-Math.PI/2)}else g=new THREE.BoxGeometry(m.w,m.fh-.02,m.d);const mesh=new THREE.Mesh(g,k<0?R3.matBod:mat);mesh.position.y=pg?k*m.fh+.01:(k+.5)*m.fh;mesh.castShadow=mesh.receiveShadow=true;mesh.userData.mid=m.id;grp.add(mesh);
+      const eg=new THREE.LineSegments(new THREE.EdgesGeometry(g),on?R3.edgeSel:R3.edgeMat);eg.position.copy(mesh.position);grp.add(eg)}
+    R3.mass.add(grp)}
+  render3()}
+let r3q=0;function render3(){if(!R3.r||r3q)return;r3q=requestAnimationFrame(()=>{r3q=0;R3.r.render(R3.scene,R3.cam)})}
+function fit3D(){if(!R3.r||!G)return;const e=G.ext,L=Math.max(e[2]-e[0],e[3]-e[1]);const c=T3((e[0]+e[2])/2,(e[1]+e[3])/2,(G.min+G.max)/2);
+  const dir=new THREE.Vector3(-.62,.62,.78).normalize();R3.camP.position.copy(c.clone().add(dir.clone().multiplyScalar(L*1.9)));R3.camO.position.copy(c.clone().add(dir.clone().multiplyScalar(L*3)));R3.oh=L*.42;R3.camO.zoom=1;
+  R3.ctl.target.copy(c);R3.camP.near=L/200;R3.camP.far=L*30;R3.camP.updateProjectionMatrix();R3.camO.near=-L*10;R3.camO.far=L*20;size3();R3.ctl.update();render3()}
+// 3D'de kütle sürükleme
+(function(){if(!window.THREE)return;const wrap=$('#c3wrap');const ray=new THREE.Raycaster();let d=null;const tp=new Map();
+  function ndc(e){const r=wrap.getBoundingClientRect();return new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1)}
+  wrap.addEventListener('pointerdown',e=>{if(!R3.r)return;if(e.pointerType==='touch'){tp.set(e.pointerId,1);if(tp.size>1){if(d){d=null;R3.ctl.enabled=true}return}}
+    if(e.button>0)return;ray.setFromCamera(ndc(e),R3.cam);const hit=ray.intersectObjects(R3.mass.children,true).find(h=>h.object.userData.mid!=null);if(!hit)return;
+    e.stopPropagation();e.preventDefault();const m=S.masses.find(m=>m.id===hit.object.userData.mid);if(!m)return;if(sel!==m.id){sel=m.id;renderPanel();update3D();draw2D()}
+    const plane=new THREE.Plane(new THREE.Vector3(0,1,0),-hit.point.y);const p0=new THREE.Vector3();ray.ray.intersectPlane(plane,p0);d={m,plane,p0,cx:m.cx,cy:m.cy,pushed:false,id:e.pointerId};R3.ctl.enabled=false;wrap.setPointerCapture(e.pointerId)},true);
+  wrap.addEventListener('pointermove',e=>{if(!d||e.pointerId!==d.id)return;ray.setFromCamera(ndc(e),R3.cam);const p=new THREE.Vector3();if(!ray.ray.intersectPlane(d.plane,p))return;if(!d.pushed){pushU();d.pushed=true}
+    d.m.cx=Math.round((d.cx+(p.x-d.p0.x))*20)/20;d.m.cy=Math.round((d.cy-(p.z-d.p0.z))*20)/20;onMasses()},true);
+  const up=e=>{tp.delete(e.pointerId);if(d&&e.pointerId===d.id){const dm=d.m,mv=d.pushed;d=null;R3.ctl.enabled=true;if(mv)stackCheck(dm);renderPanel()}};wrap.addEventListener('pointerup',up,true);wrap.addEventListener('pointercancel',up,true)})();
+
+/* ============ kesit ============ */
+const CK=$('#cvK'),XK=CK.getContext('2d');let VE=1;
+function showKesit(){drawSec()}
+function autoKesit(){if(LAY.main.includes('pk')||LAY.mini==='pk')return;if(!LAY.mini)LAY.mini='pk';else if(LAY.main.length<2)LAY.main.push('pk');else LAY.mini='pk';layout()}
+function drawSec(){if($('#pk').hidden)return;$('#kEmpty').hidden=!!S.sec;if(!S.sec||!G){const r=CK.getBoundingClientRect(),dp=window.devicePixelRatio||1;CK.width=Math.max(1,Math.round(r.width*dp));CK.height=Math.max(1,Math.round(r.height*dp));XK.setTransform(dp,0,0,dp,0,0);XK.fillStyle='#f6f8f6';XK.fillRect(0,0,r.width,r.height);return}const r=CK.getBoundingClientRect(),dp=window.devicePixelRatio||1;CK.width=Math.max(1,Math.round(r.width*dp));CK.height=Math.max(1,Math.round(r.height*dp));XK.setTransform(dp,0,0,dp,0,0);
+  const W=r.width,H=r.height;XK.fillStyle='#f6f8f6';XK.fillRect(0,0,W,H);
+  const a=S.sec.a,b=S.sec.b,L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<.5)return;const ux=(b[0]-a[0])/L,uy=(b[1]-a[1])/L;
+  const n=Math.max(2,Math.ceil(L/(G.h*.5)));const s0=[],s1=[];for(let i=0;i<=n;i++){const t=L*i/n,x=a[0]+ux*t,y=a[1]+uy*t;s0.push([t,sampleE(G.E0,x,y)]);s1.push([t,sampleE(G.E1,x,y)])}
+  const ms=[];for(const m of S.masses){if(m.poly){for(const sp of polySpans(m,a,b))ms.push({m,a:sp[0]*L,b:sp[1]*L});continue}const[l0x,l0y]=toLocal(m,a[0],a[1]),[l1x,l1y]=toLocal(m,b[0],b[1]);let t0=0,t1=1;const dx=l1x-l0x,dy=l1y-l0y;const cl=(p,q)=>{if(Math.abs(p)<1e-12)return q>=0;const t=q/p;if(p<0){if(t>t1)return false;if(t>t0)t0=t}else{if(t<t0)return false;if(t<t1)t1=t}return true};
+    if(cl(-dx,l0x+m.w/2)&&cl(dx,m.w/2-l0x)&&cl(-dy,l0y+m.d/2)&&cl(dy,m.d/2-l0y)&&t1>t0)ms.push({m,a:t0*L,b:t1*L})}
+  const P=parcelPoly(),pc=[];if(P)P.forEach((p,i)=>{const q=P[(i+1)%P.length];const t=segInt(a[0],a[1],b[0],b[1],p[0],p[1],q[0],q[1]);if(t!=null)pc.push(t*L)});
+  let zmin=1e18,zmax=-1e18;for(const s of s0.concat(s1)){zmin=Math.min(zmin,s[1]);zmax=Math.max(zmax,s[1])}const lh=pnum(S.imar.hmax);
+  for(const o of ms){const bb=baseOf(o.m);zmin=Math.min(zmin,bb-effBod(o.m)*o.m.fh);zmax=Math.max(zmax,bb+o.m.kat*o.m.fh,Number.isFinite(lh)?bb+lh:-1e18)}
+  zmin-=1.5;zmax+=1.5;const pl=58,pr=18,pt=46,pb=26;let sx=(W-pl-pr)/L,sy=sx*VE;if((zmax-zmin)*sy>H-pt-pb){sy=(H-pt-pb)/(zmax-zmin);sx=Math.min(sx,sy/VE)}
+  const ox=pl+((W-pl-pr)-L*sx)/2,oy=H-pb;const X=t=>ox+t*sx,Y=z=>oy-(z-zmin)*sy;
+  // ızgara ve eksen
+  const zs=[.5,1,2,5,10,20,50].find(s=>s*sy>=22)||100;XK.font='11px "Barlow Semi Condensed",sans-serif';XK.textAlign='right';XK.textBaseline='middle';
+  for(let z=Math.ceil(zmin/zs)*zs;z<=zmax;z+=zs){const y=Math.round(Y(z))+.5;XK.strokeStyle='rgba(14,105,100,.08)';XK.lineWidth=1;XK.beginPath();XK.moveTo(ox,y);XK.lineTo(ox+L*sx,y);XK.stroke();XK.fillStyle='#5d6b66';XK.fillText(nk(Math.round(z*100)/100),ox-6,y)}
+  const ts=[1,2,5,10,20,50,100].find(s=>s*sx>=46)||200;XK.textAlign='center';XK.textBaseline='top';for(let t=0;t<=L+1e-6;t+=ts){XK.fillStyle='#5d6b66';XK.fillText(nk(t),X(t),oy+6);XK.fillRect(X(t),oy,1,4)}
+  // zemin dolgusu
+  XK.beginPath();XK.moveTo(X(0),oy);s1.forEach(s=>XK.lineTo(X(s[0]),Y(s[1])));XK.lineTo(X(L),oy);XK.closePath();XK.fillStyle='#dfe3d4';XK.fill();
+  // kazı / dolgu bölgeleri
+  for(let i=0;i<n;i++){const A0=s0[i],B0=s0[i+1],A1=s1[i],B1=s1[i+1];const d0=A1[1]-A0[1],d1=B1[1]-B0[1];if(Math.abs(d0)<.03&&Math.abs(d1)<.03)continue;
+    XK.beginPath();XK.moveTo(X(A0[0]),Y(A0[1]));XK.lineTo(X(B0[0]),Y(B0[1]));XK.lineTo(X(B1[0]),Y(B1[1]));XK.lineTo(X(A1[0]),Y(A1[1]));XK.closePath();XK.fillStyle=(d0+d1)<0?'rgba(143,90,54,.62)':'rgba(212,167,44,.7)';XK.fill()}
+  // kütleler
+  for(const o of ms){const m=o.m,bb=baseOf(m);const nd=nodeById(m.pid),mc=nd?'#'+tint(colOf(nd),.62).toString(16).padStart(6,'0'):null;for(let k=-effBod(m);k<m.kat;k++){const z0=bb+k*m.fh;const x0=X(o.a),x1=X(o.b),y0=Y(z0+m.fh),y1=Y(z0);XK.fillStyle=k<0?'#9aa39e':(mc||(m.id===sel?'#cfe6e2':'#f3f1ea'));XK.fillRect(x0,y0,x1-x0,y1-y0);XK.strokeStyle='#26302c';XK.lineWidth=1.2;XK.strokeRect(x0,y0,x1-x0,y1-y0)}
+    const xm=(X(o.a)+X(o.b))/2,y0=Y(bb),xr=X(o.b);XK.strokeStyle='#26302c';XK.lineWidth=1;XK.beginPath();XK.moveTo(xr+2,y0);XK.lineTo(xr+34,y0);XK.stroke();XK.fillStyle='#26302c';XK.beginPath();XK.moveTo(xr+9,y0);XK.lineTo(xr+15,y0-7);XK.lineTo(xr+3,y0-7);XK.closePath();XK.fill();
+    XK.textAlign='left';XK.textBaseline='bottom';XK.font='500 12px "Barlow Semi Condensed",sans-serif';XK.fillText('±0,00 = '+nf(bb),xr+18,y0-8);
+    XK.font='16px "Architects Daughter",cursive';XK.textAlign='center';XK.textBaseline='bottom';XK.fillStyle='#0b4f4b';XK.fillText(m.name,xm,Y(bb+m.kat*m.fh)-4);
+    if(Number.isFinite(lh)){const yh=Y(bb+lh);XK.strokeStyle='#b0372c';XK.setLineDash([6,4]);XK.beginPath();XK.moveTo(X(o.a)-10,yh);XK.lineTo(X(o.b)+10,yh);XK.stroke();XK.setLineDash([]);XK.fillStyle='#b0372c';XK.font='12px "Barlow Semi Condensed",sans-serif';XK.textAlign='left';XK.textBaseline='bottom';XK.fillText('Hmax',X(o.b)+12,yh-1)}}
+  // çizgiler
+  XK.setLineDash([5,4]);XK.strokeStyle='#6b7873';XK.lineWidth=1.2;XK.beginPath();s0.forEach((s,i)=>i?XK.lineTo(X(s[0]),Y(s[1])):XK.moveTo(X(s[0]),Y(s[1])));XK.stroke();XK.setLineDash([]);
+  XK.strokeStyle='#26302c';XK.lineWidth=2;XK.beginPath();s1.forEach((s,i)=>i?XK.lineTo(X(s[0]),Y(s[1])):XK.moveTo(X(s[0]),Y(s[1])));XK.stroke();
+  for(const t of pc){XK.strokeStyle='#1c2421';XK.setLineDash([10,3,2,3]);XK.lineWidth=1;XK.beginPath();XK.moveTo(X(t),pt-6);XK.lineTo(X(t),oy);XK.stroke();XK.setLineDash([]);XK.fillStyle='#1c2421';XK.font='11px "Barlow Semi Condensed",sans-serif';XK.textAlign='center';XK.textBaseline='bottom';XK.fillText('parsel',X(t),pt-7)}
+  XK.font='600 13px "Barlow Semi Condensed",sans-serif';XK.fillStyle='#c24e2c';XK.textBaseline='bottom';XK.textAlign='left';XK.fillText('A',X(0)-2,oy-2+0);XK.textAlign='right';XK.fillText('A',X(L)+2,oy-2);
+  const veT=VE>1?(' · düşey '+VE+'×'):'';XK.font='11px "Barlow Semi Condensed",sans-serif';XK.fillStyle='#5d6b66';XK.textAlign='right';XK.textBaseline='bottom';XK.fillText('uzunluk '+nk(Math.round(L*10)/10)+' m'+veT,W-10,H-4)}
+
+/* ============ panel ve sayaçlar ============ */
+function renderHUD(){const h=$('#hud');const s=ST;const pa=Number.isFinite(s.pa);
+  const c=(lab,val,lim,over)=>`<span class="cnt${over?' over':''}"><small>${lab}</small><b>${val}</b>${lim!=null?`<i>/ ${lim}</i>`:''}</span>`;
+  const nW=s.warns?s.warns.filter(w=>w[0]==='warn').length:0;
+  h.innerHTML=c('TAKS',pa?nf(s.taks):'–',Number.isFinite(s.lt)?nf(s.lt):null,Number.isFinite(s.lt)&&s.taks>s.lt+1e-9)+c('KAKS',pa?nf(s.kaks):'–',Number.isFinite(s.lk)?nf(s.lk):null,Number.isFinite(s.lk)&&s.kaks>s.lk+1e-9)
+   +`<span class="cnt"><span class="sw" style="background:var(--cut)"></span><small>Kazı</small><b>${nf(s.kazi||0,0)}</b><i>m³</i></span><span class="cnt"><span class="sw" style="background:var(--fill)"></span><small>Dolgu</small><b>${nf(s.dolgu||0,0)}</b><i>m³</i></span>`
+   +(Number.isFinite((s.cap||{}).cap)&&prog().nodes.length?(()=>{const pb=progBrut();return`<span class="cnt${pb>s.cap.cap+1e-6?' over':''}"><small>Program</small><b>${nf(pb,0)}</b><i>/ ${nf(s.cap.cap,0)} m²</i></span>`})():'')
+   +`<button class="cnt wbtn${nW?'':' zero'}" id="hudW">${nW?nW+' uyarı':'Uyarı yok'}</button>`;
+  const dot=$('#hudDot');if(dot)dot.hidden=!nW;
+  $('#hudW').onclick=()=>{openPanel(true);const w=$('#warnSec');if(w)w.scrollIntoView({block:'start'})}}
+function openPanel(v){const p=$('#panel');p.hidden=!v;$('#bPanel').classList.toggle('on',v);if(v)renderPanel()}
+function renderPanel(){const p=$('#panel');if(p.hidden)return;const keepScroll=p.scrollTop;
+  const C=contours(),nz=C.filter(hasZ).length;const m=S.masses.find(m=>m.id===sel);const I=S.imar;const P=parcelPoly();
+  let html='';
+  if(m){html+=`<section class="psec" id="massSec"><div class="phead"><h2>Seçili kütle</h2><span>${nf(mArea(m),1)} m² taban</span></div>
+    <div class="mhead"><input class="tin l" id="mN" type="text" value="${esc(m.name)}" aria-label="Kütle adı"><button class="btn danger small" id="mDel">Sil</button></div>
+    ${prog().nodes.length?`<div class="field">Program grubu<select class="tin" id="mPg"><option value="">— yok —</option>${assignable().map(n=>`<option value="${n.id}"${m.pid===n.id?' selected':''}>${esc(n.name)} · ${nf(brutOf(n),0)} m²</option>`).join('')}</select></div>`:''}
+    <div class="grid2">${m.poly?`<div style="grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="hint" style="margin:0;flex:1;min-width:160px">${m.poly.length} köşeli çokgen · zarf ${nk(Math.round(m.w*10)/10)} × ${nk(Math.round(m.d*10)/10)} m. Köşeyi sürükle, kenar ortasındaki noktadan köşe ekle, köşeye dokunup sil.</span><button class="btn small" id="mRect">Dikdörtgen yap</button></div>`:`<label>En<span class="inunit"><input class="tin" id="mW" type="text" inputmode="decimal" value="${nk(m.w)}"><em>m</em></span></label><label>Boy<span class="inunit"><input class="tin" id="mD" type="text" inputmode="decimal" value="${nk(m.d)}"><em>m</em></span></label>`}
+    <label>Kat sayısı<span class="step"><button id="mK-" aria-label="Kat azalt">−</button><input class="tin" id="mK" type="text" inputmode="numeric" value="${m.kat}"><button id="mK+" aria-label="Kat artır">+</button></span></label>
+    <label>Bodrum<span class="step"><button id="mB-" aria-label="Bodrum azalt">−</button><input class="tin" id="mB" type="text" inputmode="numeric" value="${m.bod}"><button id="mB+" aria-label="Bodrum artır">+</button></span></label>
+    <label>Kat yüksekliği<span class="inunit"><input class="tin" id="mH" type="text" inputmode="decimal" value="${nk(m.fh)}"><em>m</em></span></label><label>Açı<span class="inunit"><input class="tin" id="mR" type="text" inputmode="decimal" value="${nk(Math.round(m.rot*10)/10)}"><em>°</em></span></label></div>
+    <div class="field">Zemin kat (±0,00) kotu<span class="inunit"><input class="tin" id="mZ" type="text" inputmode="decimal" value="${nk(baseOf(m))}"><em>m</em></span></div>
+    <div class="chips"><button id="mAuto" class="${m.auto?'on':''}">Köşe ortalaması</button><button id="mMan" class="${m.auto?'':'on'}">Elle</button></div>
+    ${(()=>{const nd=nodeById(m.pid);const lo=m.on!=null?S.masses.find(x=>x.id===m.on):null;let t='';if(nd){const ps=partsOf(nd),multi=ps.length>1,tg=brutOf(nd),dr=drawnOf(nd),bu=mArea(m)*m.kat,gp=tg-dr;t+=`<div class="kv"><div><span class="lab">Programdan</span><span>${esc(nd.name)}${multi?' · '+ps.length+' parça':''}</span></div><div><span class="lab">${multi?'Hedef / toplam çizilen':'Hedef / kütle'}</span><span id="mFitTxt">${nf(tg,0)} / ${nf(multi?dr:bu,0)} m²</span></div>${multi?`<div><span class="lab">Bu parça</span><span>${nf(bu,0)} m²</span></div>`:''}</div><div class="chips">${multi?'':`<button id="mFit" class="${m.fit?'on':''}">Alanı koru</button>`}<button id="mGap">Eksiği tamamla${Math.abs(gp)>=1?' ('+(gp>0?'+':'−')+nf(Math.abs(gp),0)+' m²)':''}</button><span class="hint" style="flex:1;min-width:140px">${multi?'Parçaların toplamı hedefe göre izlenir. Satırın rengi dolum oranını gösterir.':(m.fit?'Kat değişince taban kendiliğinden ayarlanır.':'Boyutlar elle değişti.')}</span></div>`}if(lo)t+=`<p class="hint">${esc(lo.name)} kütlesinin üstünde duruyor. Ayırmak için dışarı sürükle.</p>`;return t})()}
+    <p class="hint" id="mInfo">Köşelerde tabii zemin ortalaması ${nf(m.zA)}. Toplam yükseklik ${nk(m.kat*m.fh)} m, emsal ${nf(mArea(m)*m.kat,0)} m².</p></section>`}
+  else html+=`<section class="psec"><div class="phead"><h2>Kütle</h2></div><p class="hint">Kütle aracıyla 2D görünümde dikdörtgen ya da çokgen çiz, ya da hazır L, U, T şekillerinden birini seç. Seçince buradan kat sayısını, bodrumu ve ±0,00 kotunu değiştirirsin.</p></section>`;
+  html+=`<section class="psec" id="warnSec"><div class="phead"><h2>Uyarılar</h2><span>${ST.warns.length||'yok'}</span></div><ul class="warns" id="warnList"></ul></section>`;
+  html+=`<section class="psec"><div class="phead"><h2>İmar</h2><span>${Number.isFinite(ST.pa)?nf(ST.pa,1)+' m² parsel':'parsel yok'}</span></div>
+    <div class="field">Nizam<select class="tin" id="iN"><option value="ayrik">Ayrık</option><option value="bitisik">Bitişik</option><option value="blok">Blok</option></select></div>
+    <div class="grid2"><label>TAKS<input class="tin" id="iT" type="text" inputmode="decimal" placeholder="0,40" value="${esc(I.taks)}"></label><label>KAKS (emsal)<input class="tin" id="iK" type="text" inputmode="decimal" placeholder="1,20" value="${esc(I.kaks)}"></label>
+    <label>Hmax<span class="inunit"><input class="tin" id="iH" type="text" inputmode="decimal" placeholder="12,50" value="${esc(I.hmax)}"><em>m</em></span></label><label>Kat adedi<input class="tin" id="iKat" type="text" inputmode="numeric" placeholder="4" value="${esc(I.kat)}"></label></div>
+    ${(()=>{const c=ST.cap||{};return Number.isFinite(c.cap)?`<div class="kv" id="capKv"><div><span class="lab">Kapasite (en fazla inşaat)</span><span><b>${nf(c.cap,0)} m²</b></span></div><div><span class="lab">En fazla taban</span><span>${nf(c.taban,0)} m²</span></div><div><span class="lab">En fazla kat</span><span>${Number.isFinite(c.kat)?c.kat:'–'}</span></div><div><span class="lab">Belirleyen</span><span>${c.by==='taban'?'taban × kat':c.by==='emsal'?'emsal (KAKS)':'–'}</span></div></div>`:''})()}
+    <div class="kv"><div><span class="lab">Taban alanı</span><span>${nf(ST.taban,1)} m²${Number.isFinite(ST.pa)&&Number.isFinite(ST.lt)?' / izin '+nf(ST.pa*ST.lt,1):''}</span></div><div><span class="lab">Emsal alanı</span><span>${nf(ST.emsal,1)} m²${Number.isFinite(ST.pa)&&Number.isFinite(ST.lk)?' / izin '+nf(ST.pa*ST.lk,1):''}</span></div></div>
+    ${P?`<div class="phead"><h2>Çekme mesafeleri</h2><span>kenara dokun</span></div><div class="edges">${P.map((a,i)=>{const b=P[(i+1)%P.length],E=S.edges[i]||{t:'yan',d:3};return`<div class="erow" data-e="${i}"><b>${i+1}</b><select class="tin" data-et="${i}"><option value="on"${E.t==='on'?' selected':''}>Ön · ${nk(Math.round(Math.hypot(b[0]-a[0],b[1]-a[1])*10)/10)} m</option><option value="yan"${E.t==='yan'?' selected':''}>Yan · ${nk(Math.round(Math.hypot(b[0]-a[0],b[1]-a[1])*10)/10)} m</option><option value="arka"${E.t==='arka'?' selected':''}>Arka · ${nk(Math.round(Math.hypot(b[0]-a[0],b[1]-a[1])*10)/10)} m</option></select><span class="inunit"><input class="tin" data-ed="${i}" type="text" inputmode="decimal" value="${nk(pnum(E.d)||0)}"><em>m</em></span></div>`}).join('')}</div>`:''}
+    <p class="hint">Plan boş bıraktıysa: ayrık ve blok nizamda TAKS en fazla 0,40; kat adedi yol genişliğine bağlı (7–10 m yolda 3, 10–12 m yolda 4). Eğimli arazide ±0,00, bina köşe kotlarının ortalaması. Kaynak: Planlı Alanlar İmar Yönetmeliği, 1 Temmuz 2026 metni.</p></section>`;
+  const lys=Object.entries(S.layers).sort((a,b)=>b[1].n-a[1].n);
+  html+=`<details class="psec fold" ${S.sample?'':'open'}><summary><div class="phead"><h2>Arazi dosyası</h2><span>${esc(S.sample?'Örnek arazi':S.name||'')}</span></div></summary><div class="fold-in">
+    <div class="brow"><label class="btn primary small" id="pDxf" for="fileIn" role="button" tabindex="0" style="text-align:center;cursor:pointer">DXF aç</label><button class="btn small" id="pSample">Örnek arazi</button></div>
+    <div class="field">Çizim birimi<select class="tin" id="pUnit"><option value="4">milimetre</option><option value="5">santimetre</option><option value="6">metre</option></select></div>
+    <div class="kv"><div><span class="lab">Eş yükselti eğrisi</span><span>${C.length}</span></div><div><span class="lab">Kotlu / kotsuz</span><span class="${nz<C.length?'neg':''}">${nz} / ${C.length-nz}</span></div>${G&&!G.flat?`<div><span class="lab">Kot aralığı</span><span>${nf(G.min)} – ${nf(G.max)}</span></div>`:''}<div><span class="lab">Kot noktası</span><span>${kotPointsCache.length}</span></div>
+    <div><span class="lab">Yerel 0,0 = gerçek</span><span>Y ${nf(S.origin[0],0)} · X ${nf(S.origin[1],0)}</span></div></div>
+    <p class="hint">Harita parselin yanına taşındı, döndürülmedi; kuzey yukarıda.</p>
+    <div class="phead"><h2>Katmanlar</h2><span>${lys.length}</span></div>
+    ${lys.map(([n,l])=>`<div class="lyr"><i class="dot" style="background:${ROLE_COL[l.role]}"></i><span class="nm" title="${esc(n)}">${esc(n)}</span><small>${l.n}</small><select class="tin" data-ly="${esc(n)}">${ROLES.map(r=>`<option value="${r[0]}"${r[0]===l.role?' selected':''}>${r[1]}</option>`).join('')}</select></div>`).join('')}
+    </div></details>`;
+  p.innerHTML=html;p.scrollTop=keepScroll;renderWarns();
+  const iN=$('#iN');if(iN)iN.value=I.nizam;const pu=$('#pUnit');if(pu)pu.value=String(S.units);
+  // olaylar
+  const on=(id,ev,f)=>{const el=document.getElementById(id);if(el)el.addEventListener(ev,f)};
+  if(m){let pushed=false;const pu1=()=>{if(!pushed){pushU();pushed=true}};
+    const num=(id,key,min,rnd)=>on(id,'input',e=>{const v=pnum(e.target.value);if(!Number.isFinite(v)||v<min)return;pu1();if(key==='w'||key==='d')m.fit=false;m[key]=rnd?Math.round(v):v;onMasses();if(key==='rot'||key==='w'||key==='d')draw2D()});
+    num('mW','w',.5);num('mD','d',.5);num('mH','fh',2);num('mR','rot',-360);num('mK','kat',0,1);num('mB','bod',0,1);
+    on('mN','input',e=>{pu1();m.name=e.target.value||('K'+m.id);draw2D();drawSec();renderWarns();save()});
+    on('mZ','input',e=>{const v=pnum(e.target.value);if(!Number.isFinite(v))return;pu1();m.auto=false;m.z0=v;$('#mAuto').classList.remove('on');$('#mMan').classList.add('on');onMasses()});
+    const stp=(id,key,dd,min)=>on(id,'click',()=>{pushU();m[key]=Math.max(min,m[key]+dd);onMasses();syncMassFields(true)});stp('mK-','kat',-1,0);stp('mK+','kat',1,0);stp('mB-','bod',-1,0);stp('mB+','bod',1,0);
+    on('mAuto','click',()=>{pushU();m.auto=true;onMasses();$('#mAuto').classList.add('on');$('#mMan').classList.remove('on');syncMassFields(true)});
+    on('mMan','click',()=>{pushU();m.auto=false;m.z0=m.zA;$('#mMan').classList.add('on');$('#mAuto').classList.remove('on');onMasses()});
+    on('mPg','change',e=>{pushU();const n=nodeById(+e.target.value||null);assignMass(m,n,!!n)});
+    on('mFit','click',()=>{pushU();m.fit=!m.fit;onMasses();renderPanel()});
+    on('mRect','click',()=>{pushU();m.poly=null;m.fit=false;onMasses();renderPanel()});
+    on('mGap','click',()=>{const nd=nodeById(m.pid);if(!nd)return;pushU();const cur=mArea(m)*m.kat,gp=brutOf(nd)-drawnOf(nd);const f=Math.sqrt(Math.max(.05,(cur+gp)/Math.max(1,cur)));m.fit=false;polyScale(m,f);onMasses();renderPanel();renderProg()});
+    on('mDel','click',()=>{pushU();for(const x of S.masses)if(x.on===m.id)x.on=m.on;S.masses=S.masses.filter(x=>x.id!==m.id);sel=null;onMasses();update3D();renderPanel()})}
+  let ip=false;const imar=(id,key)=>on(id,'input',e=>{if(!ip){pushU();ip=true}S.imar[key]=e.target.value;computeStats();renderHUD();renderWarns();updImarKV();draw2D();drawSec();save()});
+  imar('iT','taks');imar('iK','kaks');imar('iH','hmax');imar('iKat','kat');on('iN','change',e=>{pushU();S.imar.nizam=e.target.value;save()});
+  p.querySelectorAll('[data-et]').forEach(s=>s.addEventListener('change',e=>{const i=+e.target.dataset.et;pushU();const t=e.target.value;S.edges[i]={t,d:t==='on'?5:3};computeStats();draw2D();update3D();renderHUD();renderPanel();save()}));
+  p.querySelectorAll('[data-ed]').forEach(s=>{let pp=false;s.addEventListener('input',e=>{const i=+e.target.dataset.ed;if(!pp){pushU();pp=true}S.edges[i]={t:(S.edges[i]||{}).t||'yan',d:pnum(e.target.value)||0};computeStats();draw2D();update3D();renderHUD();renderWarns();save()})});
+  p.querySelectorAll('.erow').forEach(r=>{r.addEventListener('pointerenter',()=>{hlEdge=+r.dataset.e;draw2D()});r.addEventListener('pointerleave',()=>{hlEdge=-1;draw2D()})});
+  p.querySelectorAll('[data-ly]').forEach(s=>s.addEventListener('change',e=>{pushU();S.layers[e.target.dataset.ly].role=e.target.value;if(S.parcel!=null&&roleOf(S.ents.find(x=>x.id===S.parcel))==='hide')setParcel(null);if(S.parcel==null)pickParcel(false);autoKots();onTerrain(false);renderPanel()}));
+  on('pSample','click',()=>confirmReplace(loadSample));
+  on('pUnit','change',e=>{pushU();rescale(+e.target.value);toast('Birim değişti, harita yeniden ölçeklendi.',2500)});
+}
+function updImarKV(){/* imar giriş alanını bozmadan özet satırları */const kv=[...document.querySelectorAll('#panel .kv')].find(k=>k.id!=='capKv'&&k.textContent.includes('Taban alanı'));if(!kv)return;const r=kv.children;if(r.length<2)return;
+  r[0].lastElementChild.textContent=nf(ST.taban,1)+' m²'+(Number.isFinite(ST.pa)&&Number.isFinite(ST.lt)?' / izin '+nf(ST.pa*ST.lt,1):'');r[1].lastElementChild.textContent=nf(ST.emsal,1)+' m²'+(Number.isFinite(ST.pa)&&Number.isFinite(ST.lk)?' / izin '+nf(ST.pa*ST.lk,1):'')}
+function renderWarns(){const l=$('#warnList');if(!l)return;const W=ST.warns||[];l.innerHTML=W.length?W.map(w=>`<li class="${w[0]}">${esc(w[1])}</li>`).join(''):'<li class="ok">Her şey sınırlar içinde.</li>';const h=document.querySelector('#warnSec .phead span');if(h)h.textContent=W.length||'yok'}
+function syncMassFields(force){const m=S.masses.find(m=>m.id===sel);if(!m||$('#panel').hidden)return;const a=document.activeElement;
+  const set=(id,v)=>{const el=document.getElementById(id);if(el&&(force||el!==a))el.value=v};set('mW',nk(m.w));set('mD',nk(m.d));set('mK',m.kat);set('mB',m.bod);set('mH',nk(m.fh));set('mR',nk(Math.round(m.rot*10)/10));set('mZ',nk(baseOf(m)));
+  const ft=$('#mFitTxt');if(ft){const nd=nodeById(m.pid);if(nd){const multi=partsOf(nd).length>1;ft.textContent=nf(brutOf(nd),0)+' / '+nf(multi?drawnOf(nd):mArea(m)*m.kat,0)+' m²'}}const i=$('#mInfo');if(i)i.textContent=`Köşelerde tabii zemin ortalaması ${nf(m.zA)}. Toplam yükseklik ${nk(m.kat*m.fh)} m, emsal ${nf(mArea(m)*m.kat,0)} m².`;updImarKV()}
+
+/* ============ program (ihtiyaç programı) ============ */
+const PAL=['#0e6964','#c0703a','#4f67a8','#9a5287','#6b8a36','#b38a22','#3f8597','#a24b45'];
+function prog(){if(!S.prog)S.prog={k:1.2,nodes:[],pid:1};return S.prog}
+const nodeById=id=>id==null?null:prog().nodes.find(n=>n.id===id);
+const kidsOf=id=>prog().nodes.filter(n=>n.p===id);
+function netOf(n,d){d=d||0;const k=kidsOf(n.id);return k.length&&d<12?k.reduce((s,c)=>s+netOf(c,d+1),0):(+n.a||0)*(+n.n||0)}
+const brutOf=n=>netOf(n)*prog().k;
+function topOf(n){let d=0;while(n&&n.p!=null&&d<20){const p=nodeById(n.p);if(!p)break;n=p;d++}return n}
+const colOf=n=>(topOf(n)||{}).c||PAL[0];
+const progBrut=()=>prog().nodes.filter(n=>n.p==null).reduce((s,n)=>s+brutOf(n),0);
+function newNode(o){const P=prog();const n=Object.assign({id:P.pid++,name:'Yeni',a:0,n:1,p:null,open:true},o);if(n.p==null&&!n.c){const used=new Set(P.nodes.filter(x=>x.p==null).map(x=>x.c));n.c=PAL.find(c=>!used.has(c))||PAL[P.nodes.length%PAL.length]}P.nodes.push(n);return n}
+function delNode(id){const P=prog();const rm=new Set([id]);let ch=true;while(ch){ch=false;for(const n of P.nodes)if(n.p!=null&&rm.has(n.p)&&!rm.has(n.id)){rm.add(n.id);ch=true}}P.nodes=P.nodes.filter(n=>!rm.has(n.id));if(P.links)P.links=P.links.filter(l=>!rm.has(l.a)&&!rm.has(l.b));for(const m of S.masses)if(rm.has(m.pid))m.pid=null}
+function hexA(h,a){const n=parseInt(h.slice(1),16);return`rgba(${n>>16&255},${n>>8&255},${n&255},${a})`}
+function tint(h,k){const n=parseInt(h.slice(1),16);const f=c=>Math.round(c+(255-c)*k);return(f(n>>16&255)<<16)|(f(n>>8&255)<<8)|f(n&255)}
+function capacity(){const P=parcelPoly();const pa=P?Math.abs(area(P)):NaN;const I=S.imar;const lt=pnum(I.taks),lk=pnum(I.kaks),lh=pnum(I.hmax),lkat=pnum(I.kat);
+  const lim=limitPoly();const la=lim&&lim.length>2?Math.abs(area(lim)):pa;
+  let taban=Number.isFinite(lt)?pa*lt:la;if(Number.isFinite(la))taban=Math.min(taban,la);
+  let kat=Infinity;if(Number.isFinite(lh))kat=Math.floor(lh/3+1e-6);if(Number.isFinite(lkat))kat=Math.min(kat,lkat);
+  const emsal=Number.isFinite(lk)?pa*lk:NaN;let cap=emsal;
+  if(Number.isFinite(kat)&&Number.isFinite(taban)){const t=taban*kat;cap=Number.isFinite(cap)?Math.min(cap,t):t}
+  return{pa,taban,kat:Number.isFinite(kat)?kat:NaN,emsal,cap,la,H:Number.isFinite(lh)?lh:(Number.isFinite(kat)?kat*3:NaN),by:Number.isFinite(emsal)&&Number.isFinite(kat)&&Number.isFinite(taban)?(taban*kat<emsal?'taban':'emsal'):''}}
+function syncFit(){const cnt={};for(const m of S.masses)if(m.pid)cnt[m.pid]=(cnt[m.pid]||0)+1;
+  for(const m of S.masses){if(!m.pid||!m.fit||cnt[m.pid]>1)continue;const n=nodeById(m.pid);if(!n)continue;const t=brutOf(n)/Math.max(1,m.kat);if(t<1)continue;
+    if(m.poly){const a=pArea(m.poly);if(a>.01){const f=Math.sqrt(t/a);if(Math.abs(f-1)>1e-4)polyScale(m,f)}}
+    else{const r=m.w/Math.max(.1,m.d);const w=Math.round(Math.sqrt(t*r)*10)/10;m.w=Math.max(1,w);m.d=Math.max(1,Math.round(t/m.w*10)/10)}}}
+let bsel=null;
+function renderProg(){const el=$('#ptree');if(!el)return;const tc=document.querySelector('#pEmpty .tplc');if(tc&&!tc.childElementCount){tc.innerHTML=tplChips();tc.querySelectorAll('[data-tpl]').forEach(b=>b.onclick=()=>applyTpl(b.dataset.tpl))}const P=prog();let h='';
+  const row=(n,d)=>{const k=kidsOf(n.id),g=k.length>0||!!n.grp;const np=S.masses.filter(m=>m.pid===n.id).length,site=np>0;
+    h+=`<div class="prow${bsel===n.id?' on':''}${g?' grp':''}" data-id="${n.id}" style="padding-left:${d*14}px">${g?`<button class="tg" data-tg="${n.id}" aria-label="Aç ya da kapat">${n.open?'▾':'▸'}</button>`:'<span></span>'}<i class="dot" style="background:${colOf(n)};${d?'opacity:.6':''}"></i><input class="pin nm" data-f="name" value="${esc(n.name)}" aria-label="Ad">${g?`<span class="tot" data-tot="${n.id}">${nf(brutOf(n),0)} m²</span>`:`<input class="pin num" data-f="a" inputmode="decimal" value="${nk(+n.a||0)}" aria-label="Birim alan m²"><input class="pin num" data-f="n" inputmode="numeric" value="${+n.n||0}" aria-label="Adet">`}<button class="mb${site?' site':''}" data-menu="${n.id}" aria-label="Seçenekler">${site?(np>1?np:'●'):'⋯'}</button></div>`;
+    if(g&&n.open)k.forEach(c=>row(c,d+1))};
+  P.nodes.filter(n=>n.p==null).forEach(n=>row(n,0));
+  el.innerHTML=h;updFill();$('#pEmpty').hidden=P.nodes.length>0;$('#bEmpty').hidden=P.nodes.length>0;const ki=$('#pK');if(ki&&document.activeElement!==ki)ki.value=nk(P.k);updCap()}
+function updTotals(){document.querySelectorAll('[data-tot]').forEach(s=>{const n=nodeById(+s.dataset.tot);if(n)s.textContent=nf(brutOf(n),0)+' m²'});updCap()}
+function updCap(){const el=$('#pcap');if(!el)return;const c=ST.cap||capacity();const b=progBrut();const has=Number.isFinite(c.cap)&&c.cap>0;const r=has?b/c.cap:0;
+  el.innerHTML=`<div class="capline"><span>Program <b>${nf(b,0)}</b> m² brüt</span><span>${has?'kapasite <b>'+nf(c.cap,0)+'</b> m²':'kapasite için imar gir'}</span></div>${has?`<div class="capbar${r>1?' over':''}"><i style="width:${Math.min(100,r*100)}%"></i></div><div class="capline sm"><span>%${nf(r*100,0)} dolu</span><span>${r>1?'fazla '+nf(b-c.cap,0)+' m²':'kalan '+nf(c.cap-b,0)+' m²'}</span></div>`:''}`}
+function progChanged(full){syncFit();computeE1();computeStats();if(full)renderProg();else updTotals();ensurePos();drawBub();buildTint();update3DTerrain();update3D();draw2D();drawSec();renderHUD();save()}
+/* --- balonlar (serbest yerleşim, gruplama, bağ fırçaları) --- */
+const CB=$('#cvB'),XB=CB.getContext('2d');const VB={w:1,h:1,z:1,ox:0,oy:0,manual:false,s:1,cx:0,cy:0,tool:'move'};
+const bubR=n=>Math.sqrt(Math.max(brutOf(n),1)/Math.PI);
+const isGrp=n=>!!n.grp||kidsOf(n.id).length>0;
+function leavesOf(n,d){d=d||0;if(!isGrp(n))return[n];if(d>20)return[];return kidsOf(n.id).flatMap(c=>leavesOf(c,d+1))}
+function heightOf(n,d){d=d||0;const k=kidsOf(n.id).filter(isGrp);return k.length&&d<20?1+Math.max(...k.map(c=>heightOf(c,d+1))):0}
+function depthOf(n){let d=0,x=n;while(x&&x.p!=null&&d<20){x=nodeById(x.p);d++}return d}
+const isAnc=(a,n)=>{let x=n,d=0;while(x&&d<25){if(x.id===a.id)return true;x=nodeById(x.p);d++}return false};
+const links=()=>{const L=prog().links||(prog().links=[]);for(const l of L)if(l.s){l.w=Math.min(5,l.s.length)||1;l.bend=0;delete l.s}return L};
+function centerOf(n){const L=leavesOf(n);if(!L.length)return[0,0];let x=0,y=0,w=0;for(const l of L){const a=Math.max(1,brutOf(l));x+=l.x*a;y+=l.y*a;w+=a}return[x/w,y/w]}
+function hullPts(P){P=P.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);if(P.length<3)return P;const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);const lo=[],up=[];for(const p of P){while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p)}for(let i=P.length-1;i>=0;i--){const p=P[i];while(up.length>=2&&cr(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p)}up.pop();lo.pop();return lo.concat(up)}
+function hullOf(g,ex){const L=leavesOf(g).filter(l=>!ex||!ex.has(l.id));if(!L.length)return null;const L0=leavesOf(g);const rm=L0.length?L0.reduce((q,l)=>q+bubR(l),0)/L0.length:2;const pad=(.8+1.6*heightOf(g))*Math.max(1,rm*.18);const pts=[];for(const l of L){const r=bubR(l)+pad;for(let k=0;k<16;k++){const a=k/16*Math.PI*2;pts.push([l.x+Math.cos(a)*r,l.y+Math.sin(a)*r])}}return hullPts(pts)}
+function ensurePos(){const P=prog();for(const n of P.nodes)if(kidsOf(n.id).length)n.grp=true;
+  const tops=P.nodes.filter(n=>n.p==null);let cx=0;const placed=P.nodes.filter(n=>!isGrp(n)&&Number.isFinite(n.x));
+  if(placed.length){let mx=-1e9;for(const l of placed)mx=Math.max(mx,l.x+bubR(l));cx=mx+6}
+  for(const t of tops){const L=leavesOf(t).filter(l=>!Number.isFinite(l.x));if(!L.length)continue;const have=leavesOf(t).filter(l=>Number.isFinite(l.x));
+    let c0=have.length?[have.reduce((s,l)=>s+l.x,0)/have.length,have.reduce((s,l)=>s+l.y,0)/have.length]:null;
+    if(!c0){const R=Math.sqrt(L.reduce((s,l)=>s+brutOf(l),0)/Math.PI)*1.25+1;c0=[cx+R,0];cx+=2*R+5}
+    const all=P.nodes.filter(n=>!isGrp(n)&&Number.isFinite(n.x));
+    for(const l of L.sort((a,b)=>bubR(b)-bubR(a))){const r=bubR(l);let ok=null;for(let k=0;k<900&&!ok;k++){const a=k*.5,d=k*.18;const x=c0[0]+Math.cos(a)*d,y=c0[1]+Math.sin(a)*d;if(all.every(o=>Math.hypot(o.x-x,o.y-y)>=bubR(o)+r+.4))ok=[x,y]}l.x=(ok||c0)[0];l.y=(ok||c0)[1];all.push(l)}}}
+function relax(fixed){const L=prog().nodes.filter(n=>!isGrp(n)&&Number.isFinite(n.x));for(let it=0;it<40;it++){let mv=false;for(let i=0;i<L.length;i++)for(let j=i+1;j<L.length;j++){const a=L[i],b=L[j];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);if(d<1e-4){dx=1;dy=0;d=1}const mn=bubR(a)+bubR(b)+.3;if(d<mn){const p=mn-d;dx/=d;dy/=d;const fa=fixed&&fixed.has(a.id),fb=fixed&&fixed.has(b.id);if(fa&&fb)continue;const ka=fa?0:fb?1:.5,kb=fb?0:fa?1:.5;a.x-=dx*p*ka;a.y-=dy*p*ka;b.x+=dx*p*kb;b.y+=dy*p*kb;mv=true}}if(!mv)break}}
+function prune(){const P=prog();let ch=true;while(ch){ch=false;for(const n of P.nodes)if(n.grp&&!kidsOf(n.id).length){delNode(n.id);ch=true;break}}}
+function topColor(n){if(n.p==null&&!n.c){const used=new Set(prog().nodes.filter(x=>x.p==null&&x!==n).map(x=>x.c));n.c=PAL.find(c=>!used.has(c))||PAL[prog().nodes.length%PAL.length]}}
+function sizeB(){const r=CB.getBoundingClientRect(),d=window.devicePixelRatio||1;if(r.width<2)return false;VB.w=r.width;VB.h=r.height;CB.width=Math.round(r.width*d);CB.height=Math.round(r.height*d);XB.setTransform(d,0,0,d,0,0);return true}
+function bubFit(){const L=prog().nodes.filter(n=>!isGrp(n)&&Number.isFinite(n.x));if(!L.length){VB.s=4;VB.cx=0;VB.cy=0;VB.z=1;VB.ox=0;VB.oy=0;return}let a=[1e9,1e9,-1e9,-1e9];for(const l of L){const r=bubR(l)+3;a=[Math.min(a[0],l.x-r),Math.min(a[1],l.y-r),Math.max(a[2],l.x+r),Math.max(a[3],l.y+r)]}
+  const pad=40,top=70,bot=60;VB.s=Math.min((VB.w-2*pad)/(a[2]-a[0]),(VB.h-top-bot)/(a[3]-a[1]),40);VB.cx=(a[0]+a[2])/2;VB.cy=(a[1]+a[3])/2;VB.z=1;VB.ox=0;VB.oy=(top-bot)/2}
+const b2s=(x,y)=>[VB.w/2+(x-VB.cx)*VB.s*VB.z+VB.ox,VB.h/2+(y-VB.cy)*VB.s*VB.z+VB.oy];
+const s2b=(px,py)=>[(px-VB.w/2-VB.ox)/(VB.s*VB.z)+VB.cx,(py-VB.h/2-VB.oy)/(VB.s*VB.z)+VB.cy];
+function bText(t,x,y,font,col,al){XB.font=font;XB.textAlign=al||'center';XB.textBaseline='middle';XB.lineJoin='round';XB.lineWidth=3.2;XB.strokeStyle='rgba(246,248,246,.92)';XB.strokeText(t,x,y);XB.fillStyle=col;XB.fillText(t,x,y)}
+function smoothPath(P,closed){if(P.length<2)return;XB.beginPath();if(closed){const m=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];const n=P.length;let s=m(P[n-1],P[0]);XB.moveTo(s[0],s[1]);for(let i=0;i<n;i++){const q=m(P[i],P[(i+1)%n]);XB.quadraticCurveTo(P[i][0],P[i][1],q[0],q[1])}XB.closePath();return}
+  XB.moveTo(P[0][0],P[0][1]);for(let i=1;i<P.length-1;i++){const q=[(P[i][0]+P[i+1][0])/2,(P[i][1]+P[i+1][1])/2];XB.quadraticCurveTo(P[i][0],P[i][1],q[0],q[1])}XB.lineTo(P[P.length-1][0],P[P.length-1][1])}
+function smoothPts(P,step){if(P.length<2)return P.slice();const R=[P[0]];for(let i=1;i<P.length;i++){let a=R[R.length-1];const b=P[i];let d=Math.hypot(b[0]-a[0],b[1]-a[1]);while(d>=step){const t=step/d;const q=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];R.push(q);a=q;d=Math.hypot(b[0]-a[0],b[1]-a[1])}}
+  const last=P[P.length-1];if(Math.hypot(last[0]-R[R.length-1][0],last[1]-R[R.length-1][1])>step*.3)R.push(last);let A=R;for(let pass=0;pass<5;pass++){if(A.length<3)break;const B=[A[0]];for(let i=1;i<A.length-1;i++)B.push([(A[i-1][0]+2*A[i][0]+A[i+1][0])/4,(A[i-1][1]+2*A[i][1]+A[i+1][1])/4]);B.push(A[A.length-1]);A=B}return A}
+function raySeg(C,dx,dy,a,b){const ex=b[0]-a[0],ey=b[1]-a[1];const den=dx*ey-dy*ex;if(Math.abs(den)<1e-12)return null;const t=((a[0]-C[0])*ey-(a[1]-C[1])*ex)/den,u=((a[0]-C[0])*dy-(a[1]-C[1])*dx)/den;return(t>=0&&u>=0&&u<=1)?t:null}
+function edgeDist(n,ux,uy){if(!isGrp(n))return bubR(n);const h=hullOf(n),C=centerOf(n);if(!h)return 1;let best=0;for(let i=0;i<h.length;i++){const t=raySeg(C,ux,uy,h[i],h[(i+1)%h.length]);if(t!=null&&t>best)best=t}return best||1}
+function linkGeom(lk){const a=nodeById(lk.a),b=nodeById(lk.b);if(!a||!b)return null;const A=centerOf(a),B=centerOf(b);const dx=B[0]-A[0],dy=B[1]-A[1],L=Math.hypot(dx,dy);if(L<1e-6)return null;const ux=dx/L,uy=dy/L;
+  const ra=edgeDist(a,ux,uy),rb=edgeDist(b,-ux,-uy),gap=.35;if(L<=ra+rb+2*gap)return null;const P0=[A[0]+ux*(ra+gap),A[1]+uy*(ra+gap)],P1=[B[0]-ux*(rb+gap),B[1]-uy*(rb+gap)];
+  const l=Math.hypot(P1[0]-P0[0],P1[1]-P0[1]),bd=lk.bend||0;return{P0,P1,M:[(P0[0]+P1[0])/2-uy*bd*l,(P0[1]+P1[1])/2+ux*bd*l]}}
+function bezPts(g,n){const o=[];for(let i=0;i<=n;i++){const t=i/n,u=1-t;o.push([u*u*g.P0[0]+2*u*t*g.M[0]+t*t*g.P1[0],u*u*g.P0[1]+2*u*t*g.M[1]+t*t*g.P1[1]])}return o}
+const lw=w=>1.4+(Math.max(1,w)-1)*1.6;
+function drawLink(lk,ghost){const g=linkGeom(lk);if(!g)return;const col=LCOL[lk.t]||'#26302c',W=lw(lk.w);const[a,b]=[b2s(...g.P0),b2s(...g.P1)],m=b2s(...g.M);
+  const path=()=>{XB.beginPath();XB.moveTo(a[0],a[1]);XB.quadraticCurveTo(m[0],m[1],b[0],b[1])};XB.lineCap='round';
+  if(VB.lsel===lk&&!ghost){path();XB.strokeStyle='rgba(224,96,60,.28)';XB.lineWidth=W+8;XB.stroke()}
+  path();XB.strokeStyle=hexA(col,ghost?.45:.82);XB.lineWidth=W;XB.setLineDash(lk.t==='ayir'?[W*2.2+4,W*1.6+5]:[]);XB.stroke();XB.setLineDash([]);
+  for(const p of[a,b]){XB.beginPath();XB.arc(p[0],p[1],W*.75+1.6,0,7);XB.fillStyle=hexA(col,ghost?.45:.9);XB.fill()}}
+function linkAt(px,py){let best=null,bd=1e9;for(const lk of links()){const g=linkGeom(lk);if(!g)continue;const P=bezPts(g,28).map(p=>b2s(p[0],p[1]));for(let i=0;i<P.length-1;i++){const d=segD(px,py,P[i][0],P[i][1],P[i+1][0],P[i+1][1]);if(d<bd){bd=d;best=lk}}if(best===lk&&bd<Math.max(11,lw(lk.w)))return lk}return bd<Math.max(11,best?lw(best.w):0)?best:null}
+const LCOL={bag:'#0b4f4b',ayir:'#b0372c'};VB.lsel=null;
+function drawBub(){if($('#pp').hidden||!sizeB())return;ensurePos();if(!VB.manual)bubFit();const W=VB.w,H=VB.h;XB.clearRect(0,0,W,H);XB.fillStyle='#f6f8f6';XB.fillRect(0,0,W,H);
+  const P=prog(),k=VB.s*VB.z;const groups=P.nodes.filter(isGrp).sort((a,b)=>depthOf(a)-depthOf(b));const tgt=bdrag&&bdrag.tgt;
+  const hulls=new Map();
+  for(const g of groups){const h=hullOf(g,bdrag&&bdrag.ex);if(!h)continue;hulls.set(g.id,h);const S2=h.map(p=>b2s(p[0],p[1]));const c=colOf(g),d=depthOf(g);
+    smoothPath(S2,true);XB.fillStyle=hexA(c,d?.05:.07);XB.fill();XB.setLineDash(d?[3,4]:[8,5]);XB.strokeStyle=hexA(c,(bsel===g.id||tgt===g.id)?1:(d?.55:.75));XB.lineWidth=(bsel===g.id||tgt===g.id)?2.6:(d?1.1:1.5);XB.stroke();XB.setLineDash([])}
+  // bağlar
+  for(const lk of links())drawLink(lk);
+  if(bdrag&&bdrag.prev)drawLink(bdrag.prev,true);
+  // balonlar
+  for(const l of P.nodes.filter(n=>!isGrp(n))){const c=colOf(l),[x,y]=b2s(l.x,l.y),r=bubR(l)*k;const top=l.p==null;XB.beginPath();XB.arc(x,y,r,0,7);XB.fillStyle=hexA(c,top?.3:.24);XB.fill();XB.strokeStyle=c;XB.lineWidth=(bsel===l.id||tgt===l.id)?2.8:1.3;XB.stroke();
+    if(S.masses.some(m=>m.pid===l.id)){XB.fillStyle=c;XB.beginPath();XB.arc(x+r*.7,y-r*.7,4,0,7);XB.fill()}
+    if(r>15)bText(l.name,x,y-(r>30?7:0),top?'16px "Architects Daughter",cursive':'500 '+(r>40?14:12)+'px "Barlow Semi Condensed",sans-serif','#1c2421');if(r>30)bText(nf(brutOf(l),0)+' m²',x,y+10,'12px "Barlow Semi Condensed",sans-serif','#4a5752')}
+  // grup adları
+  for(const g of groups){const h=hulls.get(g.id);if(!h)continue;let tp=h[0];for(const p of h)if(p[1]<tp[1])tp=p;const[x,y]=b2s(tp[0],tp[1]);const d=depthOf(g),site=S.masses.some(m=>m.pid===g.id);
+    bText(g.name+' · '+nf(brutOf(g),0)+' m²'+(site?' · sahada':''),x,y-10,d?'500 13px "Barlow Semi Condensed",sans-serif':'17px "Architects Daughter",cursive',colOf(g))}
+  // geçici çizgi
+  if(bdrag&&bdrag.pts&&bdrag.pts.length>1){const col=bdrag.k==='lasso'?'#4a5752':'rgba(38,48,44,.35)';smoothPath(bdrag.pts.map(p=>b2s(p[0],p[1])),bdrag.k==='lasso');XB.strokeStyle=col;XB.lineWidth=bdrag.k==='lasso'?1.8:1.2;XB.setLineDash(bdrag.k==='lasso'?[5,4]:[]);XB.stroke();XB.setLineDash([]);if(bdrag.k==='lasso'){XB.fillStyle='rgba(74,87,82,.06)';XB.fill()}}
+  XB.font='11.5px "Barlow Semi Condensed",sans-serif';XB.fillStyle='#6b7873';XB.textAlign='right';XB.textBaseline='bottom';
+  const tip={move:'balonu balona bırak: yeni grup · gruba bırak: katılır · dışarı bırak: çıkar · bağa dokun: ayarla',lasso:'balonların etrafına halka çiz: yeni grup',bag:'bir balondan diğerine çiz · aynı bağı tekrar çizince kalınlaşır (en fazla 5) · bağa dokun: ayarla'}[VB.tool]||'';
+  if(P.nodes.length)XB.fillText(tip,W-12,H-8);
+  const bb=$('#bubbar'),n=nodeById(bsel);if(n){const site=S.masses.find(m=>m.pid===n.id);bb.hidden=false;bb.innerHTML=`<i class="dot" style="background:${colOf(n)}"></i><b>${esc(n.name)}</b><span>${nf(brutOf(n),0)} m² brüt</span><button class="btn primary small" id="bbGo">${site?'Sahada · göster':'Sahaya indir'}</button>${isGrp(n)?'<button class="btn small" id="bbUn">Grubu çöz</button>':''}`;$('#bbGo').onclick=()=>massFromNode(n);const un=$('#bbUn');if(un)un.onclick=()=>dissolve(n)}else bb.hidden=true}
+let bdrag=null;
+function leafAt(x,y,ex){const L=prog().nodes.filter(n=>!isGrp(n)&&Number.isFinite(n.x)&&!(ex&&ex.has(n.id)));let best=null;for(const l of L){if(Math.hypot(x-l.x,y-l.y)<=bubR(l)){if(!best||bubR(l)<bubR(best))best=l}}return best}
+function groupAt(x,y,ex,skip){const G2=prog().nodes.filter(isGrp).sort((a,b)=>depthOf(b)-depthOf(a));for(const g of G2){if(skip&&skip(g))continue;const h=hullOf(g,ex);if(h&&h.length>2&&inPoly(x,y,h))return g}return null}
+function nodeAt(x,y){return leafAt(x,y)||groupAt(x,y)}
+function nameCard(g,msg){openCard(`<div class="card-h"><strong>${msg||'Yeni grup'}</strong><button class="x" aria-label="Kapat">×</button></div><div class="row"><input class="tin l" id="gN" type="text" value="${esc(g.name)}" style="flex:1"><button class="btn primary" id="gOk">Kaydet</button></div>`,()=>{const i=$('#gN');setTimeout(()=>{i.focus();i.select()},20);const ok=()=>{g.name=i.value.trim()||g.name;closeCard();progChanged(true)};$('#gOk').onclick=ok;i.onkeydown=e=>{if(e.key==='Enter')ok()}})}
+function grpCount(){return prog().nodes.filter(isGrp).length+1}
+function makeGroup(items,p){const g=newNode({name:'Grup '+grpCount(),p,grp:true,open:true});for(const it of items){it.p=g.id}topColor(g);return g}
+function finishDrop(dd,wx,wy){const D=dd.n,ex=new Set(leavesOf(D).map(l=>l.id));
+  if(!isGrp(D)){const L=leafAt(wx,wy,ex);if(L&&L!==D){const g=makeGroup([D,L],L.p);relax(new Set([L.id]));progChanged(true);bsel=g.id;nameCard(g,'İki balon gruplandı');return}}
+  const G2=groupAt(wx,wy,ex,g=>g===D||isAnc(D,g));
+  if(G2){if(D.p!==G2.id){D.p=G2.id;toast(D.name+' → '+G2.name,2200)}}
+  else if(D.p!=null){D.p=null;topColor(D);toast(D.name+' gruptan çıktı.',2200)}
+  prune();relax(ex);progChanged(true)}
+function finishLasso(pts){if(pts.length<4)return;const P=prog();const inside=n=>leavesOf(n).every(l=>inPoly(l.x,l.y,pts));const items=[];const walk=arr=>{for(const n of arr){if(!leavesOf(n).length)continue;if(inside(n))items.push(n);else if(isGrp(n))walk(kidsOf(n.id))}};walk(P.nodes.filter(n=>n.p==null));
+  if(!items.length){toast('Halkanın içinde balon yok.',2000);return}if(items.length===1&&isGrp(items[0])){bsel=items[0].id;drawBub();renderProg();return}
+  const ps=new Set(items.map(i=>i.p));const cp=ps.size===1?[...ps][0]:null;pushU();const g=makeGroup(items,cp);prune();bsel=g.id;progChanged(true);nameCard(g,items.length+' öğe gruplandı')}
+function strokeBend(dd,a,b){const A=centerOf(a),B=centerOf(b),dx=B[0]-A[0],dy=B[1]-A[1],L2=dx*dx+dy*dy||1;let vm=0;for(const p of dd.pts){const rx=p[0]-A[0],ry=p[1]-A[1];const t=(rx*dx+ry*dy)/L2;if(t<.15||t>.85)continue;const v=(rx*-dy+ry*dx)/L2;if(Math.abs(v)>Math.abs(vm))vm=v}return clamp(vm*1.6,-.42,.42)}
+function finishLink(dd){const e=dd.pts[dd.pts.length-1];const b=nodeAt(e[0],e[1]),a=dd.a;if(!a||!b||a===b||isAnc(a,b)||isAnc(b,a)){toast('Bağ için çizgiyi bir balondan başlatıp başka bir balonda bitir.',2600);return}
+  pushU();const LK=links();let lk=LK.find(l=>(l.a===a.id&&l.b===b.id)||(l.a===b.id&&l.b===a.id));
+  if(!lk){lk={a:a.id,b:b.id,t:'bag',w:1,bend:strokeBend(dd,a,b)};LK.push(lk)}
+  else if(lk.t!=='bag'){lk.t='bag';lk.w=1;toast('Bağ "yakın olsun" oldu.',2000)}
+  else if(lk.w>=5)toast('Bağ en güçlü hâlinde (5).',1800);else lk.w++;
+  VB.lsel=lk;save();drawBub()}
+function dissolve(g){pushU();for(const c of kidsOf(g.id)){c.p=g.p;if(g.p==null)topColor(c)}const nm=g.name;prog().links=links().filter(l=>l.a!==g.id&&l.b!==g.id);prog().nodes=prog().nodes.filter(n=>n!==g);for(const m of S.masses)if(m.pid===g.id)m.pid=null;if(bsel===g.id)bsel=null;progChanged(true);toast(nm+' grubu çözüldü.',2200)}
+function linkCard(lk){const a=nodeById(lk.a),b=nodeById(lk.b);if(!a||!b)return;VB.lsel=lk;drawBub();let pushed=false;const pu=()=>{if(!pushed){pushU();pushed=true}};
+  openCard(`<div class="card-h"><strong>${esc(a.name)} ↔ ${esc(b.name)}</strong><button class="x" aria-label="Kapat">×</button></div>
+  <div class="row" style="justify-content:space-between"><div class="chips" id="lkT"><button data-t="bag">Yakın olsun</button><button data-t="ayir">Uzak olsun</button></div>
+  <span class="step"><button id="lkM" aria-label="Zayıflat">−</button><b id="lkW" style="min-width:64px;text-align:center;font-variant-numeric:tabular-nums"></b><button id="lkP" aria-label="Güçlendir">+</button></span></div>
+  <div class="row"><button class="btn danger" id="lkD">Bağı sil</button></div>`,c=>{
+    const paint=()=>{c.querySelectorAll('#lkT button').forEach(x=>x.classList.toggle('on',x.dataset.t===lk.t));$('#lkW').textContent='güç '+lk.w+' / 5';drawBub();save()};paint();
+    c.querySelectorAll('#lkT button').forEach(x=>x.onclick=()=>{pu();lk.t=x.dataset.t;paint()});
+    $('#lkM').onclick=()=>{pu();lk.w=Math.max(1,lk.w-1);paint()};$('#lkP').onclick=()=>{pu();lk.w=Math.min(5,lk.w+1);paint()};
+    $('#lkD').onclick=()=>{pu();prog().links=links().filter(l=>l!==lk);VB.lsel=null;closeCard();drawBub();save()}})}
+(function(){const pt=new Map();let pin=null;
+  CB.addEventListener('pointerdown',e=>{CB.setPointerCapture(e.pointerId);pt.set(e.pointerId,{x:e.offsetX,y:e.offsetY,t:e.pointerType});if(e.pointerType==='pen')penSeen=true;
+    if(pt.size===2){bdrag=null;const[a,b]=[...pt.values()];pin={d:Math.hypot(a.x-b.x,a.y-b.y),z:VB.z,ox:VB.ox,oy:VB.oy,cx:(a.x+b.x)/2,cy:(a.y+b.y)/2};VB.manual=true;drawBub();return}
+    const[wx,wy]=s2b(e.offsetX,e.offsetY);const nav=e.pointerType==='touch'&&penSeen;
+    if(nav||e.button===1||e.button===2){bdrag={k:'pan',x:e.offsetX,y:e.offsetY,ox:VB.ox,oy:VB.oy,mv:false};return}
+    const T=VB.tool;
+    if(T==='move'||T==='bag'){const L=leafAt(wx,wy);if(!L){const lk=linkAt(e.offsetX,e.offsetY);if(lk){bdrag={k:'ltap',lk,x:e.offsetX,y:e.offsetY};return}}if(T==='bag'){const a=L||groupAt(wx,wy);bdrag={k:'bag',a,pts:[[wx,wy]]};if(!a)toast('Çizgiyi bir balonun üstünden başlat.',2000);return}const n=L||groupAt(wx,wy);if(n){const ls=leavesOf(n);bdrag={k:'node',n,x:e.offsetX,y:e.offsetY,w0:[wx,wy],orig:ls.map(l=>[l,l.x,l.y]),ex:null,mv:false,pushed:false}}else bdrag={k:'pan',x:e.offsetX,y:e.offsetY,ox:VB.ox,oy:VB.oy,mv:false};return}
+    if(T==='lasso'){bdrag={k:'lasso',pts:[[wx,wy]]};return}
+});
+  CB.addEventListener('pointermove',e=>{const p=pt.get(e.pointerId);if(p){p.x=e.offsetX;p.y=e.offsetY}
+    if(pin&&pt.size>=2){const[a,b]=[...pt.values()];const dd=Math.hypot(a.x-b.x,a.y-b.y);VB.z=clamp(pin.z*dd/pin.d,.2,8);VB.ox=pin.ox+((a.x+b.x)/2-pin.cx);VB.oy=pin.oy+((a.y+b.y)/2-pin.cy);drawBub();return}
+    if(!bdrag)return;const[wx,wy]=s2b(e.offsetX,e.offsetY);
+    if(bdrag.k==='pan'){const dx=e.offsetX-bdrag.x,dy=e.offsetY-bdrag.y;if(!bdrag.mv&&Math.hypot(dx,dy)<5)return;bdrag.mv=true;VB.manual=true;VB.ox=bdrag.ox+dx;VB.oy=bdrag.oy+dy;drawBub();return}
+    if(bdrag.k==='node'){if(!bdrag.mv&&Math.hypot(e.offsetX-bdrag.x,e.offsetY-bdrag.y)<6)return;bdrag.mv=true;if(!bdrag.pushed){pushU();bdrag.pushed=true;VB.manual=true;bdrag.ex=new Set(leavesOf(bdrag.n).map(l=>l.id))}
+      const dx=wx-bdrag.w0[0],dy=wy-bdrag.w0[1];for(const[l,x,y]of bdrag.orig){l.x=x+dx;l.y=y+dy}
+      const D=bdrag.n;const L=!isGrp(D)?leafAt(wx,wy,bdrag.ex):null;const G2=L?null:groupAt(wx,wy,bdrag.ex,g=>g===D||isAnc(D,g));bdrag.tgt=L?L.id:G2?G2.id:null;drawBub();return}
+    if(bdrag.pts){const q=bdrag.pts[bdrag.pts.length-1];if(Math.hypot(wx-q[0],wy-q[1])*VB.s*VB.z>2){bdrag.pts.push([wx,wy]);if(bdrag.k==='bag'&&bdrag.a){const b=nodeAt(wx,wy);if(b&&b!==bdrag.a&&!isAnc(b,bdrag.a)&&!isAnc(bdrag.a,b)){const ex=links().find(l=>(l.a===bdrag.a.id&&l.b===b.id)||(l.a===b.id&&l.b===bdrag.a.id));bdrag.prev=ex?{...ex,t:'bag',w:Math.min(5,ex.t==='bag'?ex.w+1:1)}:{a:bdrag.a.id,b:b.id,t:'bag',w:1,bend:strokeBend(bdrag,bdrag.a,b)}}else bdrag.prev=null}drawBub()}}});
+  const end=e=>{pt.delete(e.pointerId);if(pin){if(pt.size<2)pin=null;bdrag=null;return}if(!bdrag)return;const dd=bdrag;bdrag=null;const[wx,wy]=s2b(e.offsetX,e.offsetY);
+    if(dd.k==='pan'){if(!dd.mv){VB.lsel=null;const n=nodeAt(wx,wy);bsel=n?n.id:null;renderProg();const r=n&&document.querySelector('.prow[data-id="'+n.id+'"]');if(r)r.scrollIntoView({block:'nearest'})}drawBub();return}
+    if(dd.k==='node'){if(!dd.mv){bsel=dd.n.id;renderProg();const r=document.querySelector('.prow[data-id="'+bsel+'"]');if(r)r.scrollIntoView({block:'nearest'});drawBub();return}finishDrop(dd,wx,wy);return}
+    if(dd.k==='lasso'){finishLasso(dd.pts);drawBub();return}
+    if(dd.k==='bag'){if(dd.a)finishLink(dd);drawBub();return}
+    if(dd.k==='ltap'){if(Math.hypot(e.offsetX-dd.x,e.offsetY-dd.y)<10)linkCard(dd.lk);return}};
+  CB.addEventListener('pointerup',end);CB.addEventListener('pointercancel',e=>{pt.delete(e.pointerId);if(bdrag&&bdrag.orig&&bdrag.pushed){for(const[l,x,y]of bdrag.orig){l.x=x;l.y=y}}bdrag=null;pin=null;drawBub()});
+  CB.addEventListener('wheel',e=>{e.preventDefault();VB.manual=true;const k=Math.exp(-e.deltaY*.0015);const[wx,wy]=s2b(e.offsetX,e.offsetY);VB.z=clamp(VB.z*k,.2,8);const[sx,sy]=b2s(wx,wy);VB.ox+=e.offsetX-sx;VB.oy+=e.offsetY-sy;drawBub()},{passive:false});
+  document.querySelectorAll('[data-bt]').forEach(b=>b.onclick=()=>{VB.tool=b.dataset.bt;document.querySelectorAll('[data-bt]').forEach(x=>x.classList.toggle('on',x===b));CB.style.cursor=VB.tool==='move'?'default':'crosshair';drawBub()});
+  $('#bubFitB').onclick=()=>{VB.manual=false;drawBub()}})();
+
+/* --- liste olayları --- */
+(function(){const T=$('#ptree');let pushed=null;
+  T.addEventListener('focusin',e=>{if(e.target.classList.contains('pin'))pushed=false});
+  T.addEventListener('input',e=>{const t=e.target;if(!t.classList.contains('pin'))return;const n=nodeById(+t.closest('.prow').dataset.id);if(!n)return;if(!pushed){pushU();pushed=true}
+    if(t.dataset.f==='name'){n.name=t.value;{const ps=partsOf(n);ps.forEach((m,i)=>{m.name=(t.value||n.name)+(ps.length>1?' '+(i+1):'')})}drawBub();draw2D();save();return}
+    const v=pnum(t.value);if(!Number.isFinite(v)||v<0)return;n[t.dataset.f]=t.dataset.f==='n'?Math.round(v):v;progChanged(false)});
+  T.addEventListener('click',e=>{const tg=e.target.closest('[data-tg]');if(tg){const n=nodeById(+tg.dataset.tg);n.open=!n.open;renderProg();save();return}
+    const mb=e.target.closest('[data-menu]');if(mb){rowMenu(+mb.dataset.menu);return}
+    const r=e.target.closest('.prow');if(r&&!e.target.classList.contains('pin')){bsel=+r.dataset.id;renderProg();drawBub()}})})();
+function rowMenu(id){const n=nodeById(id);if(!n)return;bsel=id;renderProg();drawBub();const site=S.masses.find(m=>m.pid===id);
+  openCard(`<div class="card-h"><strong>${esc(n.name)}</strong><span style="color:var(--muted);font-variant-numeric:tabular-nums">${nf(brutOf(n),0)} m² brüt</span><button class="x" aria-label="Kapat">×</button></div>
+  <div class="row" style="justify-content:flex-start"><button class="btn primary" id="rmSite">${site?'Sahada · göster':'Sahaya indir'}</button>${site?'<button class="btn" id="rmPart">Parça ekle</button>':''}<button class="btn" id="rmAdd">Alt öğe ekle</button><button class="btn danger" id="rmDel">Sil</button></div>
+  ${n.p==null?`<div class="chips">${PAL.map(c=>`<button data-col="${c}" aria-label="Renk" style="width:26px;height:26px;padding:0;background:${c};border-color:${c===n.c?'var(--fg)':'transparent'};border-width:2px"></button>`).join('')}</div>`:''}`,c=>{
+    $('#rmSite').onclick=()=>{closeCard();massFromNode(n)};
+    if($('#rmPart'))$('#rmPart').onclick=()=>{closeCard();addPart(n)};
+    $('#rmAdd').onclick=()=>{pushU();n.open=true;const ch=newNode({name:'Yeni mahal',a:20,n:1,p:n.id});closeCard();progChanged(true);setTimeout(()=>{const r=document.querySelector('.prow[data-id="'+ch.id+'"] .nm');if(r){r.focus();r.select()}},30)};
+    $('#rmDel').onclick=()=>{pushU();delNode(id);if(bsel===id)bsel=null;closeCard();progChanged(true);renderPanel()};
+    c.querySelectorAll('[data-col]').forEach(b=>b.onclick=()=>{pushU();n.c=b.dataset.col;closeCard();progChanged(true)})})}
+function massFromNode(n){const ex=S.masses.find(m=>m.pid===n.id);
+  if(!$('#p2').hidden||!$('#p3').hidden);else toggleView('p3');
+  if(ex){sel=ex.id;renderPanel();update3D();draw2D();toast(n.name+' sahada, seçildi.',2200);return}
+  const b=brutOf(n);if(b<1){toast('Önce alan gir.',2200);return}
+  const cap=ST.cap||capacity();const kat=Number.isFinite(cap.kat)?Math.max(1,Math.min(cap.kat,4)):3;const t=b/kat;const w=Math.round(Math.sqrt(t*1.6)*10)/10,d=Math.round(t/w*10)/10;
+  const L=ST.lim&&ST.lim.length>2?ST.lim:parcelPoly();let cx,cy;if(L){cx=L.reduce((s,p)=>s+p[0],0)/L.length;cy=L.reduce((s,p)=>s+p[1],0)/L.length}else if(G){cx=(G.ext[0]+G.ext[2])/2;cy=(G.ext[1]+G.ext[3])/2}else{cx=20;cy=15}
+  const k=S.masses.length;cx+=(k%3)*4;cy-=(k%3)*4;
+  pushU();const m={id:S.seq,name:n.name,cx,cy,w,d,rot:0,kat,fh:3,bod:0,auto:true,z0:0,zA:0,pid:n.id,fit:true,on:null};S.seq++;S.masses.push(m);sel=m.id;computeE1();m.z0=m.zA;
+  onMasses();update3D();renderPanel();renderProg();drawBub();toast(n.name+' sahaya indi: '+kat+' kat × '+nf(t,0)+' m² taban. Kat sayısını değiştirince taban kendiliğinden ayarlanır.',4500)}
+/* --- istifleme --- */
+const lowerOf=m=>m&&m.on!=null?S.masses.find(x=>x.id===m.on)||null:null;
+function groundOf(m){let x=m,d=0;while(lowerOf(x)&&d<10){x=lowerOf(x);d++}return x}
+const effBod=m=>m.on!=null?0:m.bod;
+const topOfM=m=>baseOf(m)+m.kat*m.fh;
+function aboveChain(m,o){let x=o,d=0;while(x&&d<12){if(x.id===m.id)return true;x=lowerOf(x);d++}return false}
+function stackCheck(m){const prev=m.on;let best=null;for(const o of S.masses){if(o===m||aboveChain(m,o))continue;if(inMass(o,m.cx,m.cy)&&(!best||topOfM(o)>topOfM(best)))best=o}
+  m.on=best?best.id:null;if(m.on!==prev){toast(best?(m.name+', '+best.name+' kütlesinin üstüne kondu.'):(m.name+' zemine indi.'),2600);onMasses();update3D();renderPanel()}}
+/* --- içe aktarma --- */
+function parseProg(txt){txt=String(txt||'').trim();if(!txt)return[];
+  if(/^[\[{]/.test(txt)){try{let j=JSON.parse(txt);if(!Array.isArray(j))j=j.program||j.items||j.nodes||[j];const walk=(arr,out)=>{for(const o of arr||[]){const n={name:String(o.ad||o.name||o.isim||'Öğe'),a:+(o.m2||o.alan||o.area||0)||0,n:+(o.adet||o.count||1)||1,kids:[]};out.push(n);walk(o.alt||o.children||o.items,n.kids)}return out};return walk(j,[])}catch(e){}}
+  const root={kids:[]};const st=[{lv:-1,n:root}];
+  for(let raw of txt.split(/\r?\n/)){if(!raw.trim())continue;raw=raw.replace(/\t/g,'    ');let lv=raw.match(/^\s*/)[0].length;let line=raw.trim().replace(/^#+\s*/,'');const b=line.match(/^([-*•]+)\s+/);if(b){lv+=2;line=line.slice(b[0].length)}
+    let name=line,a=0,n=1;const parts=line.split(/\s*[|;]\s*/).filter(x=>x!=='');
+    if(parts.length>1){name=parts[0];a=pnum(parts[1])||0;n=parts[2]!=null?Math.max(1,Math.round(pnum(parts[2])||1)):1}
+    else{const m=line.match(/^(.*?)[\s:,-]+(\d+(?:[.,]\d+)?)\s*(?:m2|m²)?\s*(?:[x×*]\s*(\d+)\s*(?:adet)?)?\s*$/i);if(m&&m[1].trim()&&/(m2|m²|[x×*]\s*\d+\s*(adet)?\s*$)/i.test(line)){name=m[1].trim();a=pnum(m[2]);n=m[3]?+m[3]:1}}
+    while(st.length>1&&st[st.length-1].lv>=lv)st.pop();const node={name:name.replace(/[:\s]+$/,''),a,n,kids:[]};st[st.length-1].n.kids.push(node);st.push({lv,n:node})}
+  return root.kids}
+function addTree(arr,p){for(const o of arr){const n=newNode({name:o.name,a:o.kids.length?0:o.a,n:o.kids.length?1:o.n,p,grp:o.kids.length>0});if(o.kids.length)addTree(o.kids,n.id)}}
+function pasteCard(){openCard(`<div class="card-h"><strong>Programı yapıştır</strong><button class="x" aria-label="Kapat">×</button></div>
+  <p>Her satır: <b>ad | m² | adet</b>. Girintili satırlar bir üstteki grubun içine girer. JSON da olur.</p>
+  <textarea id="pTxt" class="tin l" rows="8" style="font-size:14.5px;resize:vertical;font-family:var(--f-ui)" placeholder="Konut&#10;  2+1 daire | 85 | 6&#10;  3+1 daire | 115 | 4&#10;Ticari&#10;  Dükkân | 55 | 3"></textarea>
+  <div class="row"><div class="chips" style="margin-right:auto"><button id="pRep" class="on">Değiştir</button><button id="pAdd">Ekle</button></div><button class="btn primary" id="pGo">İçe aktar</button></div>`,c=>{
+    let rep=true;$('#pRep').onclick=()=>{rep=true;$('#pRep').classList.add('on');$('#pAdd').classList.remove('on')};$('#pAdd').onclick=()=>{rep=false;$('#pAdd').classList.add('on');$('#pRep').classList.remove('on')};
+    $('#pGo').onclick=()=>{const t=parseProg($('#pTxt').value);if(!t.length){toast('Okunacak satır bulunamadı.',2500);return}pushU();if(rep){prog().nodes.forEach(n=>{for(const m of S.masses)if(m.pid===n.id)m.pid=null});prog().nodes=[];prog().links=[]}addTree(t,null);bsel=null;VB.manual=false;closeCard();progChanged(true);toast(t.length+' grup içe aktarıldı.',2500)}})}
+const TPL={
+ villa:{ad:'Villa',k:1.15,g:[['Günlük yaşam',[['Salon',45,1],['Yemek',20,1],['Mutfak',18,1],['Misafir WC',3,1]]],['Yatak bölümü',[['Ebeveyn yatak odası',20,1],['Ebeveyn banyosu',8,1],['Giyinme',6,1],['Yatak odası',14,2],['Banyo',6,1]]],['Servis',[['Kiler',4,1],['Çamaşır odası',6,1],['Teknik hacim',8,1]]],['Garaj',[['Garaj',36,1]]]],
+   l:[['Salon','Yemek',4],['Yemek','Mutfak',5],['Mutfak','Kiler',3],['Ebeveyn yatak odası','Ebeveyn banyosu',5],['Salon','Yatak odası',2,'ayir']]},
+ apartman:{ad:'Apartman',k:1.25,g:[['Konut',[['1+1 daire',60,4],['2+1 daire',85,6],['3+1 daire',115,4]]],['Ortak alanlar',[['Giriş holü',25,1],['Merdiven ve asansör',120,1],['Sığınak',40,1],['Teknik hacim',30,1]]],['Ticari',[['Dükkân',60,2]]]],l:[['Giriş holü','Merdiven ve asansör',5],['Dükkân','Giriş holü',2,'ayir']]},
+ ofis:{ad:'Ofis',k:1.25,g:[['Çalışma',[['Açık ofis',400,1],['Kapalı ofis',15,8],['Toplantı odası',25,4]]],['Destek',[['Resepsiyon',40,1],['Mutfak ve dinlenme',40,1],['Arşiv',30,1],['WC',30,1]]],['Teknik',[['Teknik hacim',60,1]]]],l:[['Resepsiyon','Toplantı odası',4],['Açık ofis','Mutfak ve dinlenme',3]]},
+ okul:{ad:'Okul',k:1.35,g:[['Eğitim',[['Derslik',55,16],['Laboratuvar',70,2],['Kütüphane',120,1]]],['Yönetim',[['Müdür odası',25,1],['Öğretmenler odası',60,1],['İdari oda',15,4]]],['Ortak',[['Çok amaçlı salon',300,1],['Yemekhane',200,1],['Spor salonu',600,1],['WC',25,4]]],['Teknik',[['Teknik hacim',120,1]]]],l:[['Derslik','Kütüphane',3],['Spor salonu','Derslik',3,'ayir'],['Yemekhane','Çok amaçlı salon',3]]},
+ hastane:{ad:'Hastane (küçük)',k:1.5,g:[['Poliklinik',[['Muayene odası',16,20],['Bekleme',120,2]]],['Acil',[['Müdahale',40,4],['Triyaj',20,2]]],['Yataklı servis',[['Hasta odası',24,30],['Hemşire istasyonu',30,2]]],['Ameliyathane',[['Ameliyat salonu',45,3],['Uyandırma',60,1]]],['Destek',[['Laboratuvar',120,1],['Görüntüleme',200,1],['Eczane',60,1]]],['Teknik',[['Teknik hacim',300,1]]]],
+   l:[['Acil','Görüntüleme',5],['Ameliyathane','Yataklı servis',4],['Poliklinik','Laboratuvar',3],['Acil','Yataklı servis',2,'ayir']]}};
+function applyTpl(key){const T=TPL[key];if(!T)return;pushU();prog().nodes.forEach(n=>{for(const m of S.masses)if(m.pid===n.id)m.pid=null});prog().nodes=[];prog().links=[];prog().k=T.k;
+  for(const[gn,items]of T.g){const g=newNode({name:gn,grp:true});for(const[a,m2,n]of items)newNode({name:a,a:m2,n,p:g.id})}
+  const byName=nm=>prog().nodes.find(n=>n.name===nm);for(const[x,y,w,t]of T.l||[]){const a=byName(x),b=byName(y);if(a&&b)links().push({a:a.id,b:b.id,t:t||'bag',w,bend:.12})}
+  bsel=null;VB.manual=false;closeCard();progChanged(true);toast(T.ad+' programı yüklendi. Alanlar ortalama başlangıç değerleri.',3500)}
+function tplChips(){return Object.entries(TPL).map(([k,t])=>`<button data-tpl="${k}">${t.ad}</button>`).join('')}
+function tplCard(){openCard(`<div class="card-h"><strong>Şablondan başla</strong><button class="x" aria-label="Kapat">×</button></div><p>Mevcut program silinir, yerine seçtiğin türün tipik programı gelir.</p><div class="chips">${tplChips()}</div>`,c=>c.querySelectorAll('[data-tpl]').forEach(b=>b.onclick=()=>applyTpl(b.dataset.tpl)))}
+function assignable(){return prog().nodes.filter(n=>isGrp(n)||n.p==null).filter(n=>brutOf(n)>0)}
+function assignMass(m,n,adjust){m.pid=n?n.id:null;if(n){const oth=S.masses.filter(x=>x!==m&&x.pid===n.id);m.name=n.name+(oth.length?' '+(oth.length+1):'');
+    if(adjust){const t=brutOf(n),a=Math.max(1,mArea(m));if(oth.length){const rem=t-oth.reduce((q,x)=>q+mArea(x)*x.kat,0);m.kat=Math.max(1,Math.round(Math.max(rem,a)/a));oth.forEach(x=>x.fit=false)}else m.kat=Math.max(1,Math.round(t/a));m.fit=false}}
+  onMasses();update3D();renderPanel();renderProg();drawBub();save()}
+function nameMassCard(m){const used=new Set(S.masses.filter(x=>x!==m&&x.pid!=null).map(x=>x.pid));const A=assignable();
+  if(!A.length)return;
+  openCard(`<div class="card-h"><strong>Bu kütle hangisi?</strong><span style="color:var(--muted);font-variant-numeric:tabular-nums">${nf(mArea(m),0)} m² taban</span><button class="x" aria-label="Kapat">×</button></div>
+  <div class="chips">${A.map(n=>`<button data-as="${n.id}" style="border-color:${colOf(n)}"><i class="dot" style="background:${colOf(n)};margin-right:5px"></i>${esc(n.name)} · ${nf(brutOf(n),0)} m²${used.has(n.id)?' · parça ekle':''}</button>`).join('')}</div>
+  <p>Seçince kütle o grubun adını alır, kat sayısı alanı karşılayacak şekilde ayarlanır. Boş geçersen isimsiz kalır.</p>`,c=>c.querySelectorAll('[data-as]').forEach(b=>b.onclick=()=>{pushU();const n=nodeById(+b.dataset.as);closeCard();assignMass(m,n,true);toast(m.name+': '+m.kat+' kat, '+nf(mArea(m)*m.kat,0)+' / '+nf(brutOf(n),0)+' m².',3200)}))}
+function sampleProg(){prog().nodes=[];prog().k=1.2;prog().links=[];const K=newNode({name:'Konut',grp:true}),T=newNode({name:'Ticari',grp:true}),O=newNode({name:'Ortak',grp:true});
+  newNode({name:'2+1 daire',a:85,n:3,p:K.id});newNode({name:'3+1 daire',a:115,n:2,p:K.id});newNode({name:'Dükkân',a:55,n:3,p:T.id});newNode({name:'Giriş holü',a:30,n:1,p:O.id});newNode({name:'Teknik hacim',a:20,n:1,p:O.id});return{K,T,O}}
+
+/* ============ örnek arazi ============ */
+function loadSample(){const N=blank();N.sample=true;N.name='Örnek arazi';N.layers={'ESYUKSELTI':{role:'contour',n:0,pl:0,pt:0,tx:0},'PARSEL':{role:'parcel',n:1,pl:1,pt:0,tx:0},'YOL':{role:'road',n:2,pl:2,pt:0,tx:0}};
+  const box=[0,0,52,38],cx=56,cy=-8;
+  for(let z=100;z<=110;z++){const R=(113-z)*4.6;const pts=[];let run=[];const fl=()=>{if(run.length>1)pts.push(run);run=[]};
+    for(let k=0;k<=360;k+=2){const a=k*Math.PI/180,r=R*(1+.07*Math.sin(3*a+.6)+.04*Math.cos(5*a));const x=cx+r*Math.cos(a),y=cy+r*Math.sin(a);if(x>=box[0]&&x<=box[2]&&y>=box[1]&&y<=box[3])run.push(x,y);else fl()}fl();
+    for(const p of pts){N.ents.push({id:N.eid++,ly:'ESYUKSELTI',p,c:false,zr:z,z:z,zs:'dxf',zz:null});N.layers.ESYUKSELTI.n++;N.layers.ESYUKSELTI.pl++}}
+  const par={id:N.eid++,ly:'PARSEL',p:[9,8,41,8,41,31,9,31],c:true,zr:0,z:null,zs:'',zz:null};N.ents.push(par);
+  N.ents.push({id:N.eid++,ly:'YOL',p:[0,6.5,52,6.5],c:false,zr:0,z:null,zs:'',zz:null});N.ents.push({id:N.eid++,ly:'YOL',p:[0,0.5,52,0.5],c:false,zr:0,z:null,zs:'',zz:null});
+  N.imar={nizam:'ayrik',taks:'0,40',kaks:'1,20',hmax:'12,50',kat:'4'};
+  S=N;setParcel(par.id);S.edges=[{t:'on',d:5},{t:'yan',d:3},{t:'arka',d:3},{t:'yan',d:3}];
+  const sp=sampleProg();S.masses=[{id:1,name:'Ticari',cx:22,cy:16,w:17.8,d:11.1,rot:0,kat:1,fh:4,bod:0,auto:true,z0:0,zA:0,pid:sp.T.id,fit:false,on:null},{id:2,name:'Konut',cx:22.5,cy:17.5,w:17.6,d:11,rot:0,kat:3,fh:3,bod:0,auto:true,z0:0,zA:0,pid:sp.K.id,fit:true,on:1}];S.seq=3;sel=null;bsel=null;VB.manual=false;
+  HIST.u=[];HIST.r=[];firstFit=true;onTerrain(true);renderPanel();showKesit();renderProg();ensurePos();drawBub();updUR()}
+
+function loadVT(){const N=blank();N.vt2=true;N.name='Yarışma arsası 79,2 × 144,8';N.layers={'ZEMIN':{role:'contour',n:0,pl:0,pt:0,tx:0},'PARSEL':{role:'parcel',n:1,pl:1,pt:0,tx:0}};
+  const W=79.2,Hh=144.8,m=30;
+  for(const z of[0]){N.ents.push({id:N.eid++,ly:'ZEMIN',p:[-m,-m,W+m,-m,W+m,Hh+m,-m,Hh+m,-m,-m],c:true,zr:z,z:z,zs:'dxf',zz:null});N.layers.ZEMIN.n++;N.layers.ZEMIN.pl++}
+  N.ents.push({id:N.eid++,ly:'ZEMIN',p:[-m-5,-m-5,W+m+5,-m-5,W+m+5,Hh+m+5,-m-5,Hh+m+5,-m-5,-m-5],c:true,zr:0,z:0,zs:'dxf',zz:null});N.layers.ZEMIN.n++;N.layers.ZEMIN.pl++;
+  const par={id:N.eid++,ly:'PARSEL',p:[0,0,W,0,W,Hh,0,Hh],c:true,zr:0,z:null,zs:'',zz:null};N.ents.push(par);
+  N.imar={nizam:'ayrik',taks:'',kaks:'25',hmax:'',kat:''};
+  S=N;setParcel(par.id);S.edges=[{t:'on',d:0},{t:'yan',d:0},{t:'arka',d:0},{t:'yan',d:0}];
+  const P=prog();P.k=1;P.nodes=[];P.links=[];P.pid=1;S.masses=[];S.seq=1;
+  const R=[['Podyum',36000,1,4,6],['Ofis kulesi',104000,1,52,4.2],['Otel',33600,1,24,3.5],['Konut',62300,1,56,3.2],['Yarım kule',49500,1,45,3.2]];
+  const cx=W/2,cy=Hh/2,off=[[0,0],[-18,-34],[18,-34],[-18,34],[18,34]];let pod=null;
+  R.forEach((r,i)=>{const n=newNode({name:r[0],a:r[1],n:r[2]});const t=r[1]/r[3];let w,d;if(!i){w=70;d=Math.round(t/w*10)/10}else{w=Math.round(Math.sqrt(t)*10)/10;d=w}
+    const ms={id:S.seq++,name:r[0],cx:cx+off[i][0],cy:cy+off[i][1],w,d,rot:0,kat:r[3],fh:r[4],bod:0,auto:true,z0:0,zA:0,pid:n.id,fit:true,on:i?pod:null};S.masses.push(ms);if(!i)pod=ms.id});
+  sel=null;bsel=null;VB.manual=false;HIST.u=[];HIST.r=[];firstFit=true;onTerrain(true);computeE1();S.masses.forEach(x=>{if(x.on==null)x.z0=x.zA});onMasses();renderPanel();showKesit();renderProg();ensurePos();drawBub();updUR();save()}
+
+/* ============ çokgen kütle, çok parçalı tanım, dışa aktarma ============ */
+function lpoly(m){return m.poly&&m.poly.length>=3?m.poly:[[-m.w/2,-m.d/2],[m.w/2,-m.d/2],[m.w/2,m.d/2],[-m.w/2,m.d/2]]}
+function C4(m){const r=m.rot*Math.PI/180,c=Math.cos(r),s=Math.sin(r),w=m.w/2,d=m.d/2;return[[-w,-d],[w,-d],[w,d],[-w,d]].map(([x,y])=>[m.cx+x*c-y*s,m.cy+x*s+y*c])}
+function pArea(P){let a=0;for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length];a+=p[0]*q[1]-q[0]*p[1]}return Math.abs(a)/2}
+function mArea(m){return m.poly&&m.poly.length>=3?pArea(m.poly):m.w*m.d}
+function polySD(x,y,P){let d=1e18,ins=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];const dd=segD(x,y,a[0],a[1],b[0],b[1]);if(dd<d)d=dd;if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])ins=!ins}return ins?-d:d}
+function normPoly(m){const P=m.poly;let x0=1e18,y0=1e18,x1=-1e18,y1=-1e18;for(const p of P){x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1])}
+  const sx=(x0+x1)/2,sy=(y0+y1)/2,r=m.rot*Math.PI/180,c=Math.cos(r),s=Math.sin(r);for(const p of P){p[0]-=sx;p[1]-=sy}m.cx+=sx*c-sy*s;m.cy+=sx*s+sy*c;m.w=Math.max(.1,x1-x0);m.d=Math.max(.1,y1-y0)}
+function polyScale(m,f){if(m.poly&&m.poly.length>=3){for(const p of m.poly){p[0]*=f;p[1]*=f}normPoly(m)}else{m.w=Math.max(1,m.w*f);m.d=Math.max(1,m.d*f)}}
+function polySpans(m,a,b){const[l0x,l0y]=toLocal(m,a[0],a[1]),[l1x,l1y]=toLocal(m,b[0],b[1]);const P=m.poly,ts=[0,1];
+  for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length];const t=segInt(l0x,l0y,l1x,l1y,p[0],p[1],q[0],q[1]);if(t!=null)ts.push(t)}
+  ts.sort((x,y)=>x-y);const out=[];for(let i=0;i<ts.length-1;i++){const t=(ts[i]+ts[i+1])/2;if(ts[i+1]-ts[i]>1e-9&&inPoly(l0x+(l1x-l0x)*t,l0y+(l1y-l0y)*t,P)){if(out.length&&Math.abs(out[out.length-1][1]-ts[i])<1e-9)out[out.length-1][1]=ts[i+1];else out.push([ts[i],ts[i+1]])}}return out}
+function partsOf(n){return S.masses.filter(m=>m.pid===n.id)}
+function drawnOf(n){return partsOf(n).reduce((s,m)=>s+mArea(m)*m.kat,0)}
+function updFill(){document.querySelectorAll('.prow[data-id]').forEach(r=>{const n=nodeById(+r.dataset.id);if(!n)return;const ps=partsOf(n);if(!ps.length){r.style.background='';return}
+  const t=brutOf(n),d=drawnOf(n),pc=t>0?Math.min(100,d/t*100):0,over=d>t*1.005,col=over?'224,96,60':'14,105,100';r.style.background=`linear-gradient(90deg,rgba(${col},.18) ${pc}%,transparent ${pc}%)`;
+  const mb=r.querySelector('.mb');if(mb)mb.title=ps.length+' parça · '+nf(d,0)+' / '+nf(t,0)+' m²'})}
+function addPart(n){const ex=partsOf(n);if(!ex.length){massFromNode(n);return}
+  if(!$('#p2').hidden||!$('#p3').hidden);else toggleView('p3');
+  pushU();const tg=brutOf(n),ref=ex[0],kat=ref.kat;let gp=tg-drawnOf(n);
+  if(gp<tg*.05){const k=ex.length;for(const m of ex){m.fit=false;polyScale(m,Math.sqrt(k/(k+1)))}gp=tg-drawnOf(n)}
+  const a=Math.max(1,gp/Math.max(1,kat)),w=Math.max(1,Math.round(Math.sqrt(a*(ref.w/Math.max(.1,ref.d)))*10)/10),d=Math.max(1,Math.round(a/w*10)/10);
+  const off=Math.max(ref.w,ref.d)/2+Math.max(w,d)/2+4;const m={id:S.seq,name:n.name+' '+(ex.length+1),cx:ref.cx+off,cy:ref.cy,w,d,rot:0,kat,fh:ref.fh,bod:ref.bod,auto:true,z0:0,zA:0,pid:n.id,fit:false,on:null};S.seq++;
+  S.masses.push(m);ex.forEach(x=>{x.fit=false;x.name=n.name+' '+(ex.indexOf(x)+1)});sel=m.id;computeE1();m.z0=m.zA;onMasses();update3D();renderPanel();renderProg();drawBub();
+  toast(m.name+' eklendi: '+nf(a,0)+' m² taban × '+kat+' kat. Sürükleyip yerleştir.',3600)}
+/* --- çokgen çizim --- */
+const SHP={L:[[0,0],[1,0],[1,.35],[.35,.35],[.35,1],[0,1]],U:[[0,0],[1,0],[1,1],[.65,1],[.65,.35],[.35,.35],[.35,1],[0,1]],T:[[0,.65],[.35,.65],[.35,0],[.65,0],[.65,.65],[1,.65],[1,1],[0,1]],
+  X:[[.33,0],[.67,0],[.67,.33],[1,.33],[1,.67],[.67,.67],[.67,1],[.33,1],[.33,.67],[0,.67],[0,.33],[.33,.33]]};
+function snapPt(x,y,pts,exId){const tol=10/V2.s;let sx=null,sy=null,bx=tol,by=tol;const cand=pts.slice();const P=parcelPoly();if(P)for(const p of P)cand.push(p);
+  for(const m of S.masses){if(m.id===exId)continue;for(const c of corners(m))cand.push(c)}
+  for(const c of cand){const dx=Math.abs(x-c[0]);if(dx<bx){bx=dx;sx=c[0]}const dy=Math.abs(y-c[1]);if(dy<by){by=dy;sy=c[1]}}
+  return[sx!=null?sx:Math.round(x*20)/20,sy!=null?sy:Math.round(y*20)/20]}
+function polyHover(x,y){if(!polyDraw||!polyDraw.pts.length)return;polyDraw.cur=snapPt(x,y,polyDraw.pts);draw2D()}
+function polyAdd(x,y){if(!polyDraw)polyDraw={pts:[],cur:null};const P=polyDraw.pts;
+  if(P.length>=3&&Math.hypot(x-P[0][0],y-P[0][1])*V2.s<18){polyFinish();return}
+  const[sx,sy]=snapPt(x,y,P);if(P.length&&Math.hypot(sx-P[P.length-1][0],sy-P[P.length-1][1])*V2.s<4)return;P.push([sx,sy]);polyDraw.cur=[sx,sy];updMassBar();draw2D()}
+function polyFinish(){if(!polyDraw||polyDraw.pts.length<3){toast('En az 3 köşe gerekir.',2200);return}
+  const pts=polyDraw.pts.map(p=>p.slice());polyDraw=null;updMassBar();if(pArea(pts)<1){toast('Alan çok küçük.',2000);draw2D();return}pushU();makePolyMass(pts)}
+function makePolyMass(pts){let x0=1e18,y0=1e18,x1=-1e18,y1=-1e18;for(const p of pts){x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1])}
+  const cx=(x0+x1)/2,cy=(y0+y1)/2;const m={id:S.seq,name:'K'+S.seq,cx,cy,w:x1-x0,d:y1-y0,rot:0,kat:3,fh:3,bod:0,auto:true,z0:0,zA:0,poly:pts.map(p=>[Math.round((p[0]-cx)*100)/100,Math.round((p[1]-cy)*100)/100])};
+  S.seq++;S.masses.push(m);normPoly(m);sel=m.id;setTool('sel');computeE1();m.z0=m.zA;onMasses();renderPanel();update3D();nameMassCard(m)}
+function presetMass(k){const U=SHP[k];if(!U)return;const sz={L:[40,40],U:[48,36],T:[48,40],X:[40,40]}[k];const r=C2.getBoundingClientRect();const[cx,cy]=s2w(r.width/2,r.height/2);
+  pushU();makePolyMass(U.map(p=>[cx+(p[0]-.5)*sz[0],cy+(p[1]-.5)*sz[1]]))}
+function updMassBar(){const bar=document.getElementById('massBar');if(!bar||bar.hidden)return;bar.querySelectorAll('[data-mm]').forEach(b=>b.classList.toggle('on',b.dataset.mm===massMode));
+  const dr=!!(polyDraw&&polyDraw.pts.length);$('#mbDraw').hidden=!dr;$('#mbShapes').hidden=dr;if(dr)$('#mbInfo').textContent=polyDraw.pts.length+' köşe'+(polyDraw.pts.length>=3?' · ilk noktaya dokun ya da Bitir':'')}
+function polyMids(Cn){for(let i=0;i<Cn.length;i++){const a=Cn[i],b=Cn[(i+1)%Cn.length];if(Math.hypot(b[0]-a[0],b[1]-a[1])*V2.s<44)continue;const[mx,my]=w2s((a[0]+b[0])/2,(a[1]+b[1])/2);X2.beginPath();X2.arc(mx,my,5,0,7);X2.fillStyle='rgba(14,105,100,.28)';X2.fill();X2.strokeStyle='#0e6964';X2.lineWidth=1.4;X2.stroke()}}
+function drawPolyDraw(){if(!polyDraw||!polyDraw.pts.length)return;const P=polyDraw.pts,cur=polyDraw.cur;X2.save();X2.setLineDash([]);X2.strokeStyle='#0e6964';X2.lineWidth=2;X2.fillStyle='rgba(14,105,100,.14)';
+  X2.beginPath();P.forEach((p,i)=>{const[x,y]=w2s(p[0],p[1]);i?X2.lineTo(x,y):X2.moveTo(x,y)});if(cur){const[x,y]=w2s(cur[0],cur[1]);X2.lineTo(x,y)}X2.fill();X2.stroke();
+  P.forEach((p,i)=>{const[x,y]=w2s(p[0],p[1]);X2.beginPath();X2.arc(x,y,i===0?7:4.5,0,7);X2.fillStyle=i===0&&P.length>=3?'#e0603c':'#fbfcfb';X2.fill();X2.strokeStyle='#0e6964';X2.lineWidth=1.6;X2.stroke()});
+  if(cur){const l=P[P.length-1],L=Math.hypot(cur[0]-l[0],cur[1]-l[1]);const[mx,my]=w2s((cur[0]+l[0])/2,(cur[1]+l[1])/2);haloText(nk(Math.round(L*10)/10)+' m',mx,my-10,'500 13px "Barlow Semi Condensed",sans-serif','#0b4f4b')}
+  if(P.length>=3){const q=P.concat(cur?[cur]:[]);const c=q.reduce((s,p)=>[s[0]+p[0]/q.length,s[1]+p[1]/q.length],[0,0]);const[cx,cy]=w2s(c[0],c[1]);haloText(nf(pArea(q),0)+' m²',cx,cy,'500 14px "Barlow Semi Condensed",sans-serif','#0b4f4b')}X2.restore()}
+function vtxCard(m,i){const can=m.poly.length>3;openCard(`<div class="card-h"><strong>Köşe ${i+1}</strong><button class="x" aria-label="Kapat">×</button></div><div class="row" style="justify-content:flex-start"><button class="btn danger" id="vxDel" ${can?'':'disabled'}>Köşeyi sil</button><button class="btn" id="vxOk">Tamam</button></div>${can?'':'<p class="hint">Çokgenin en az 3 köşesi olmalı.</p>'}`,c=>{$('#vxOk').onclick=()=>closeCard();$('#vxDel').onclick=()=>{pushU();m.poly.splice(i,1);m.fit=false;normPoly(m);closeCard();onMasses();renderPanel()}})}
+(function(){const bar=document.getElementById('massBar');bar.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.mm){massMode=b.dataset.mm;polyDraw=null;updMassBar();draw2D();if(massMode==='poly')toast('Köşelere sırayla dokun. İlk noktaya dokununca ya da Bitir ile kapanır.',3600);return}
+  if(b.dataset.sh){presetMass(b.dataset.sh);return}
+  if(b.id==='mbUndo'){if(polyDraw&&polyDraw.pts.length){polyDraw.pts.pop();if(!polyDraw.pts.length)polyDraw=null;updMassBar();draw2D()}return}
+  if(b.id==='mbDone'){polyFinish();return}
+  if(b.id==='mbCancel'){polyDraw=null;updMassBar();draw2D()}})})();
+/* --- dışa aktarma --- */
+const f3=v=>(Math.round(v*1000)/1000).toFixed(3);
+function trAscii(s){return String(s).replace(/ç/g,'c').replace(/Ç/g,'C').replace(/ğ/g,'g').replace(/Ğ/g,'G').replace(/ı/g,'i').replace(/İ/g,'I').replace(/ö/g,'o').replace(/Ö/g,'O').replace(/ş/g,'s').replace(/Ş/g,'S').replace(/ü/g,'u').replace(/Ü/g,'U')}
+const layerName=s=>trAscii(s).toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'KUTLE';
+function solids(){return S.masses.map(m=>{const nd=nodeById(m.pid);const P=corners(m);return{m,P:area(P)<0?P.slice().reverse():P,z0:baseOf(m)-effBod(m)*m.fh,z1:baseOf(m)+m.kat*m.fh,layer:'KUTLE_'+layerName(nd?nd.name:m.name),name:trAscii(m.name)}})}
+function pointInTri(p,a,b,c){const s=(p1,p2,p3)=>(p1[0]-p3[0])*(p2[1]-p3[1])-(p2[0]-p3[0])*(p1[1]-p3[1]);const d1=s(p,a,b),d2=s(p,b,c),d3=s(p,c,a);return!((d1<0||d2<0||d3<0)&&(d1>0||d2>0||d3>0))}
+function earClip(P){const n=P.length;if(n<3)return[];const idx=[...Array(n).keys()],T=[];const cr=(a,b,c)=>(P[b][0]-P[a][0])*(P[c][1]-P[a][1])-(P[b][1]-P[a][1])*(P[c][0]-P[a][0]);let g=0;
+  while(idx.length>3&&g++<2000){let cut=false;for(let i=0;i<idx.length;i++){const a=idx[(i+idx.length-1)%idx.length],b=idx[i],c=idx[(i+1)%idx.length];if(cr(a,b,c)<=1e-9)continue;let ok=true;for(const j of idx){if(j===a||j===b||j===c)continue;if(pointInTri(P[j],P[a],P[b],P[c])){ok=false;break}}if(ok){T.push([a,b,c]);idx.splice(i,1);cut=true;break}}if(!cut)break}
+  if(idx.length===3)T.push([idx[0],idx[1],idx[2]]);return T}
+function buildOBJ(){const L=['# Proje Masasi - kutle hacimleri','# birim: metre, Z yukari'];let off=0;
+  for(const s of solids()){const R=s.P,n=R.length,T=earClip(R);L.push('o '+layerName(s.name)+'_'+s.m.id,'g '+s.layer);
+    for(const p of R)L.push(`v ${f3(p[0])} ${f3(p[1])} ${f3(s.z0)}`);for(const p of R)L.push(`v ${f3(p[0])} ${f3(p[1])} ${f3(s.z1)}`);
+    for(const t of T)L.push(`f ${off+n+t[0]+1} ${off+n+t[1]+1} ${off+n+t[2]+1}`);for(const t of T)L.push(`f ${off+t[2]+1} ${off+t[1]+1} ${off+t[0]+1}`);
+    for(let i=0;i<n;i++){const j=(i+1)%n;L.push(`f ${off+i+1} ${off+j+1} ${off+n+j+1} ${off+n+i+1}`)}off+=2*n}
+  return L.join('\n')+'\n'}
+function dxfHead(layers){const L=['0','SECTION','2','HEADER','9','$ACADVER','1','AC1009','9','$INSUNITS','70','6','0','ENDSEC','0','SECTION','2','TABLES','0','TABLE','2','LTYPE','70','1','0','LTYPE','2','CONTINUOUS','70','0','3','Solid line','72','65','73','0','40','0.0','0','ENDTAB','0','TABLE','2','LAYER','70',String(layers.length)];
+  layers.forEach((n,i)=>L.push('0','LAYER','2',n,'70','0','62',String(i%6+1),'6','CONTINUOUS'));L.push('0','ENDTAB','0','ENDSEC','0','SECTION','2','ENTITIES');return L}
+const dxfFoot=L=>{L.push('0','ENDSEC','0','EOF');return L.join('\n')+'\n'};
+function dFace(L,ly,a,b,c,d){L.push('0','3DFACE','8',ly);[a,b,c,d].forEach((p,i)=>L.push(String(10+i),f3(p[0]),String(20+i),f3(p[1]),String(30+i),f3(p[2])))}
+function dPoly(L,ly,pts,closed,three){L.push('0','POLYLINE','8',ly,'66','1','70',String((closed?1:0)+(three?8:0)));pts.forEach(p=>{L.push('0','VERTEX','8',ly,'10',f3(p[0]),'20',f3(p[1]),'30',f3(p[2]||0));if(three)L.push('70','32')});L.push('0','SEQEND','8',ly)}
+function buildDXF3(){const S0=solids(),lay=[...new Set(S0.map(s=>s.layer))];lay.push('PARSEL');const L=dxfHead(lay);
+  for(const s of S0){const R=s.P,n=R.length,T=earClip(R),a=i=>[R[i][0],R[i][1],s.z1],b=i=>[R[i][0],R[i][1],s.z0];
+    for(const t of T){dFace(L,s.layer,a(t[0]),a(t[1]),a(t[2]),a(t[2]));dFace(L,s.layer,b(t[2]),b(t[1]),b(t[0]),b(t[0]))}
+    for(let i=0;i<n;i++){const j=(i+1)%n;dFace(L,s.layer,b(i),b(j),a(j),a(i))}}
+  const P=parcelPoly();if(P)dPoly(L,'PARSEL',P.map(p=>[p[0],p[1],G?sampleE(G.E0,p[0],p[1]):0]),true,true);return dxfFoot(L)}
+function buildDXF2(){const S0=solids(),lay=[...new Set(S0.map(s=>s.layer))];lay.push('PARSEL','YAZI');const L=dxfHead(lay);
+  for(const s of S0){dPoly(L,s.layer,s.P.map(p=>[p[0],p[1],0]),true,false);const c=s.P.reduce((q,p)=>[q[0]+p[0]/s.P.length,q[1]+p[1]/s.P.length],[0,0]);
+    L.push('0','TEXT','8','YAZI','10',f3(c[0]),'20',f3(c[1]),'30','0','40','2.5','1',s.name+' '+s.m.kat+' kat '+Math.round(pArea(s.P))+' m2','72','1','11',f3(c[0]),'21',f3(c[1]),'31','0')}
+  const P=parcelPoly();if(P)dPoly(L,'PARSEL',P.map(p=>[p[0],p[1],0]),true,false);return dxfFoot(L)}
+function dlText(txt,name){const b=new Blob([txt],{type:'text/plain'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}
+function stamp(){const d=new Date(),z=n=>String(n).padStart(2,'0');return'proje-masasi-'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())}
+function exportCard(){if(!S.masses.length){toast('Dışa aktarılacak kütle yok.',2400);return}
+  openCard(`<div class="card-h"><strong>Dışa aktar</strong><button class="x" aria-label="Kapat">×</button></div><p>${S.masses.length} kütle, hacim olarak. Birim metre, Z yukarı, ±0,00 kotları gerçek yüksekliğinde. Kütleler program grubuna göre katmanlanır, parsel ayrı katmanda.</p>
+  <div class="row" style="justify-content:flex-start;flex-wrap:wrap"><button class="btn primary" id="exOBJ">OBJ · 3D model</button><button class="btn" id="exD3">DXF · 3D hacim</button><button class="btn" id="exD2">DXF · 2D plan</button></div>`,c=>{
+    $('#exOBJ').onclick=()=>{dlText(buildOBJ(),stamp()+'.obj');closeCard();toast('OBJ indirildi.',2200)};$('#exD3').onclick=()=>{dlText(buildDXF3(),stamp()+'-3d.dxf');closeCard();toast('3D DXF indirildi.',2200)};$('#exD2').onclick=()=>{dlText(buildDXF2(),stamp()+'-plan.dxf');closeCard();toast('2D DXF indirildi.',2200)}})}
+
+
+
+/* ============ dosya menüsü, proje dosyası ============ */
+function fileCard(){openCard(`<div class="card-h"><strong>Dosya</strong><button class="x" aria-label="Kapat">×</button></div>
+  <div class="fgrp"><b>Arazi</b><button class="btn" id="flDxf">DXF aç…</button></div>
+  <div class="fgrp"><b>Dışarı ver · ${S.masses.length} kütle</b><button class="btn" id="flObj">OBJ · 3D model</button><button class="btn" id="flD3">DXF · 3D hacim</button><button class="btn" id="flD2">DXF · 2D plan</button></div>
+  <div class="fgrp"><b>Proje</b><button class="btn" id="flSave">Projeyi dosyaya kaydet</button><button class="btn" id="flLoad">Projeyi dosyadan aç…</button></div>
+  <p class="hint">Çalışman bu tablette kendiliğinden saklanıyor. Dosyaya kaydetmek yedek ve taşıma içindir; tarayıcı verisi silinirse buradan geri yüklersin.</p>`,c=>{
+    $('#flDxf').onclick=()=>{closeCard();askDxf()};
+    const ex=(id,fn,nm,msg)=>{$(id).onclick=()=>{if(!S.masses.length){toast('Dışa aktarılacak kütle yok.',2400);return}dlText(fn(),nm);closeCard();toast(msg,2200)}};
+    ex('#flObj',buildOBJ,stamp()+'.obj','OBJ indirildi.');ex('#flD3',buildDXF3,stamp()+'-3d.dxf','3D DXF indirildi.');ex('#flD2',buildDXF2,stamp()+'-plan.dxf','2D DXF indirildi.');
+    $('#flSave').onclick=()=>{dlText(JSON.stringify(S),stamp()+'-proje.json');closeCard();toast('Proje dosyası indirildi.',2400)};
+    $('#flLoad').onclick=()=>{closeCard();$('#projIn').value='';$('#projIn').click()}})}
+function loadProjectObj(o){if(!o||o.v!==1||!Array.isArray(o.ents)){toast('Bu bir Proje Masası dosyası değil.',3200);return}
+  S=o;sel=null;bsel=null;HIST.u=[];HIST.r=[];VB.manual=false;firstFit=true;prog();onTerrain(true);showKesit();renderPanel();renderProg();ensurePos();drawBub();updUR();save();toast('Proje yüklendi.',2400)}
+$('#bFile').addEventListener('click',fileCard);
+$('#projIn').addEventListener('change',async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{loadProjectObj(JSON.parse(await f.text()))}catch(err){toast('Dosya okunamadı.',3000)}});
+/* ============ tablet ============ */
+let wake=null;async function keepAwake(){try{if('wakeLock'in navigator&&!wake&&document.visibilityState==='visible'){wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>{wake=null})}}catch(e){}}
+document.addEventListener('pointerdown',keepAwake,{passive:true});
+async function flushNow(){clearTimeout(saveT);try{const db=await idb();db.transaction('kv','readwrite').objectStore('kv').put(JSON.stringify(S),'proje')}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushNow();else keepAwake()});window.addEventListener('pagehide',flushNow);
+document.addEventListener('contextmenu',e=>{if(!(e.target.closest&&e.target.closest('input,textarea')))e.preventDefault()});
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+if('serviceWorker'in navigator&&/^https?:$/.test(location.protocol))window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+/* ============ dosya ============ */
+function askDxf(){$('#fileIn').value='';$('#fileIn').click()}
+function confirmReplace(fn){if(!S.masses.length||S.sample){fn();return}
+  openCard(`<div class="card-h"><strong>Yeni arazi</strong><button class="x" aria-label="Kapat">×</button></div><p>Yeni arazi yüklenince mevcut ${S.masses.length} kütle ve kesit kaldırılır. İmar değerleri kalır.</p><div class="row"><button class="btn" id="rNo">Vazgeç</button><button class="btn primary" id="rOk">Devam</button></div>`,()=>{$('#rNo').onclick=()=>closeCard();$('#rOk').onclick=()=>{closeCard();fn()}})}
+async function handleFile(f){if(!f)return;if(!/\.dxf$/i.test(f.name)){toast('Bu bir DXF dosyası değil. DWG ise önce DXF olarak kaydet.',4500);return}
+  toast('DXF okunuyor…',20000);await new Promise(r=>setTimeout(r,30));
+  try{const buf=await f.arrayBuffer();const{txt,units}=decodeDXF(buf);const N=importDXFText(txt,units,f.name);if(!N.ents.length&&!N.pts.length){toast('Dosyada çizgi bulunamadı.',4000);return}
+    sel=null;firstFit=true;finishImport(N);showKesit();openPanel(true);
+    const C=contours();const nz=C.filter(hasZ).length;toast(`${f.name}: ${C.length} eğri, ${nz} tanesi kotlu. ${nz<C.length?'Kotsuzları "Sırayla" aracıyla kotla.':''}`,6000)}
+  catch(err){console.error(err);toast('DXF okunamadı: '+(err.message||err),6000)}}
+$('#fileIn').addEventListener('click',e=>{e.target.value=''});$('#fileIn').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(f)confirmReplace(()=>handleFile(f));else toast('Dosya seçilmedi.',2500)});
+document.addEventListener('dragover',e=>{e.preventDefault();$('#drop').hidden=false});document.addEventListener('dragleave',e=>{if(!e.relatedTarget)$('#drop').hidden=true});
+document.addEventListener('drop',e=>{e.preventDefault();$('#drop').hidden=true;const f=e.dataTransfer.files[0];if(f)confirmReplace(()=>handleFile(f))});
+
+/* ============ kayıt ============ */
+let saveT=0;
+function idb(){return new Promise((res,rej)=>{try{const r=indexedDB.open('proje-masasi',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
+function save(){clearTimeout(saveT);saveT=setTimeout(async()=>{try{const db=await idb();const tx=db.transaction('kv','readwrite');tx.objectStore('kv').put(JSON.stringify(S),'proje');}catch(e){}},700)}
+async function load(){try{const db=await idb();return await new Promise(res=>{const r=db.transaction('kv').objectStore('kv').get('proje');r.onsuccess=()=>res(r.result?JSON.parse(r.result):null);r.onerror=()=>res(null)})}catch(e){return null}}
+
+/* ============ başlat ============ */
+function resizeAll(){if(!$('#p2').hidden){size2D();draw2D()}if(!$('#p3').hidden)size3();drawSec();drawBub()}
+/* ============ görünüm düzeni ============ */
+const LAY={main:['p2','p3'],mini:null,corner:'br',split:.5,hud:false,rail:true,bub:true};
+try{const o=JSON.parse(localStorage.getItem('pm-lay')||'null');if(o&&Array.isArray(o.main)&&o.main.length)Object.assign(LAY,o)}catch(e){}
+function saveLay(){try{localStorage.setItem('pm-lay',JSON.stringify(LAY))}catch(e){}}
+const place=(el,x,y,w,h)=>{el.style.left=x+'px';el.style.top=y+'px';el.style.width=Math.max(0,w)+'px';el.style.height=Math.max(0,h)+'px'};
+function miniRect(W,H){let w=clamp(W*.3,200,440),h=w*.66;if(h>H*.42){h=H*.42;w=h/.66}const m=12;const r=LAY.corner.includes('r'),b=LAY.corner.includes('b');return[r?W-w-m:m,b?H-h-m-(LAY.hud?48:0):m,w,h]}
+function layout(){const box=$('#panes').getBoundingClientRect(),W=box.width,H=box.height;if(W<2||H<2)return;
+  LAY.main=LAY.main.filter((v,i,a)=>['p2','p3','pk','pp'].includes(v)&&a.indexOf(v)===i&&v!==LAY.mini);if(!LAY.main.length){LAY.main=[LAY.mini||'p2'];if(LAY.mini===LAY.main[0])LAY.mini=null}
+  for(const id of['p2','p3','pk','pp']){const el=$('#'+id);el.hidden=!(LAY.main.includes(id)||LAY.mini===id);el.classList.toggle('mini',LAY.mini===id)}
+  const gap=10,dv=$('#divider'),hz=W>=H;
+  if(LAY.main.length===1){place($('#'+LAY.main[0]),0,0,W,H);dv.hidden=true}
+  else{const s=LAY.split;dv.hidden=false;dv.className=hz?'v':'h';
+    if(hz){const w1=Math.round((W-gap)*s);place($('#'+LAY.main[0]),0,0,w1,H);place($('#'+LAY.main[1]),w1+gap,0,W-w1-gap,H);place(dv,w1-6,0,gap+12,H)}
+    else{const h1=Math.round((H-gap)*s);place($('#'+LAY.main[0]),0,0,W,h1);place($('#'+LAY.main[1]),0,h1+gap,W,H-h1-gap);place(dv,0,h1-6,W,gap+12)}}
+  const cv=$('#minicover');if(LAY.mini){const r=miniRect(W,H);place($('#'+LAY.mini),...r);place(cv,...r);cv.hidden=false}else cv.hidden=true;
+  const visible=LAY.main.length+(LAY.mini?1:0);
+  document.querySelectorAll('[data-close]').forEach(b=>b.hidden=visible<2);
+  document.querySelectorAll('[data-min]').forEach(b=>b.hidden=LAY.main.length<2&&!LAY.mini);
+  document.querySelectorAll('.views [data-v]').forEach(b=>{b.classList.toggle('on',LAY.main.includes(b.dataset.v));b.classList.toggle('mini',LAY.mini===b.dataset.v)});
+  $('#hud').hidden=!LAY.hud;$('#bHud').classList.toggle('on',LAY.hud);$('#rail').classList.toggle('col',!LAY.rail);document.querySelector('.pgwrap').classList.toggle('nobub',!LAY.bub);$('#pgBub').classList.toggle('on',LAY.bub);
+  saveLay();resizeAll()}
+function toggleView(id){if(LAY.mini===id)LAY.mini=null;
+  else if(LAY.main.includes(id)){if(LAY.main.length===1){if(!LAY.mini)return;LAY.main=[LAY.mini];LAY.mini=null}else LAY.main=LAY.main.filter(x=>x!==id)}
+  else if(LAY.main.length<2)LAY.main.push(id);else LAY.mini=id;
+  layout()}
+function minimize(id){if(LAY.mini===id)return;const old=LAY.mini;LAY.main=LAY.main.filter(x=>x!==id);if(old)LAY.main.push(old);LAY.mini=id;if(!LAY.main.length){LAY.main=[id];LAY.mini=null}layout()}
+function swapMini(){if(!LAY.mini)return;const m=LAY.mini;LAY.mini=LAY.main[0];LAY.main[0]=m;layout()}
+document.querySelectorAll('.views [data-v]').forEach(b=>b.onclick=()=>toggleView(b.dataset.v));
+document.querySelectorAll('[data-min]').forEach(b=>b.onclick=()=>minimize(b.dataset.min));
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>toggleView(b.dataset.close));
+$('#bEnv').onclick=()=>{R3.env=R3.env===false;$('#bEnv').classList.toggle('on',R3.env!==false);update3D()};
+$('#pgAdd').onclick=()=>{pushU();const n=newNode({name:'Yeni grup',grp:true});const c=newNode({name:'Yeni mahal',a:20,n:1,p:n.id});bsel=n.id;VB.manual=false;progChanged(true);setTimeout(()=>{const r=document.querySelector('.prow[data-id="'+n.id+'"] .nm');if(r){r.focus();r.select()}},30)};
+$('#pgPaste').onclick=pasteCard;
+$('#pgTpl').onclick=tplCard;
+$('#pgBub').onclick=()=>{LAY.bub=!LAY.bub;layout()};
+{let pk=false;$('#pK').addEventListener('focus',()=>pk=false);$('#pK').addEventListener('input',e=>{const v=pnum(e.target.value);if(!Number.isFinite(v)||v<1)return;if(!pk){pushU();pk=true}prog().k=v;progChanged(false)})}
+$('#bHud').onclick=()=>{LAY.hud=!LAY.hud;layout()};
+$('#bRail').onclick=()=>{LAY.rail=!LAY.rail;layout()};
+(function(){const cv=$('#minicover');let d=null;
+  cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);const r=cv.getBoundingClientRect(),b=$('#panes').getBoundingClientRect();d={x:e.clientX,y:e.clientY,l:r.left-b.left,t:r.top-b.top,w:r.width,h:r.height,mv:false}});
+  cv.addEventListener('pointermove',e=>{if(!d)return;const dx=e.clientX-d.x,dy=e.clientY-d.y;if(Math.hypot(dx,dy)>8)d.mv=true;if(!d.mv)return;const el=$('#'+LAY.mini);place(el,d.l+dx,d.t+dy,d.w,d.h);place(cv,d.l+dx,d.t+dy,d.w,d.h)});
+  const up=e=>{if(!d)return;const dd=d;d=null;if(!dd.mv){swapMini();return}const b=$('#panes').getBoundingClientRect(),r=cv.getBoundingClientRect();LAY.corner=((r.top+r.height/2-b.top)>b.height/2?'b':'t')+((r.left+r.width/2-b.left)>b.width/2?'r':'l');layout()};
+  cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',()=>{d=null;layout()})})();
+(function(){const dv=$('#divider');let d=null;
+  dv.addEventListener('pointerdown',e=>{dv.setPointerCapture(e.pointerId);d=1;dv.classList.add('drag')});
+  dv.addEventListener('pointermove',e=>{if(!d)return;const b=$('#panes').getBoundingClientRect();LAY.split=clamp(dv.classList.contains('v')?(e.clientX-b.left)/b.width:(e.clientY-b.top)/b.height,.18,.82);layout()});
+  const up=()=>{d=null;dv.classList.remove('drag')};dv.addEventListener('pointerup',up);dv.addEventListener('pointercancel',up)})();
+document.querySelectorAll('.tb[data-t]').forEach(b=>b.onclick=()=>{closeCard();setTool(b.dataset.t);
+  const tip={seq:'Eğrilerin üstünden, alçaktan yükseğe doğru bir çizgi çek.',kot:'Kotunu yazmak istediğin eğriye dokun.',parsel:'Parsel kenarına dokun ya da başka bir kapalı sınırı parsel yap.',mass:'Kütle için bir dikdörtgen çiz.',sec:'Kesit hattını çiz: A noktasından A noktasına.'}[b.dataset.t];if(tip)toast(tip,2800)});
+$('#bFit2').onclick=()=>{fit2D();draw2D()};$('#bFit3').onclick=fit3D;
+$('#bAkso').onclick=()=>{if(!R3.r)return;R3.akso=!R3.akso;const from=R3.cam,to=R3.akso?R3.camO:R3.camP;const dir=from.position.clone().sub(R3.ctl.target).normalize();const L=G?Math.max(G.ext[2]-G.ext[0],G.ext[3]-G.ext[1]):40;to.position.copy(R3.ctl.target.clone().add(dir.multiplyScalar(R3.akso?L*3:L*1.9)));R3.cam=to;makeCtl();size3();$('#bAkso').textContent=R3.akso?'Akso':'Perspektif';$('#bAkso').classList.toggle('on',R3.akso)};
+$('#bGhost').onclick=()=>{R3.showGhost=!R3.showGhost;if(R3.ghost)R3.ghost.visible=R3.showGhost;$('#bGhost').classList.toggle('on',R3.showGhost);render3()};
+$('#bVE').onclick=()=>{VE=VE===1?2:VE===2?5:1;$('#bVE').textContent='Düşey '+VE+'×';drawSec()};
+$('#bKclose').onclick=()=>{if(!S.sec)return;pushU();S.sec=null;drawSec();update3D();draw2D();save()};
+$('#bUndo').onclick=undo;$('#bRedo').onclick=redo;$('#bPanel').onclick=()=>openPanel($('#panel').hidden);
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo()}
+  else if((e.key==='Delete'||e.key==='Backspace')&&sel!=null){pushU();for(const x of S.masses)if(x.on===sel)x.on=(S.masses.find(y=>y.id===sel)||{}).on??null;S.masses=S.masses.filter(m=>m.id!==sel);sel=null;onMasses();update3D();renderPanel()}else if(e.key==='Escape'){closeCard();tmp=null;drag=null;draw2D()}});
+{const ro=new ResizeObserver(()=>resizeAll());ro.observe($('#p2'));ro.observe($('#p3'));ro.observe($('#pk'));ro.observe($('#pp'));new ResizeObserver(()=>layout()).observe($('#panes'))}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',setBg3);new MutationObserver(setBg3).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+const _bt=buildGrid;buildGrid=function(){_bt();kotPointsCache=kotPoints()};
+(async function(){init3D();size2D();size3();setTool('sel');
+  const saved=await load();
+  if(saved&&saved.v===1&&saved.ents){S=saved;firstFit=true;onTerrain(true);showKesit()}else loadVT();
+  prog();renderProg();ensurePos();openPanel(false);layout();updUR();renderHUD()})();
+</script>
+</body>
+</html>
